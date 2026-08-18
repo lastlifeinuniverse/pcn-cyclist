@@ -25,7 +25,7 @@ canvas{display:block;width:100%;height:auto;border-radius:6px;cursor:pointer;box
 #mctrl{
   display:none;
   position:fixed;inset:0;z-index:10;
-  pointer-events:none; /* let taps fall through to canvas except on buttons */
+  pointer-events:all;
   grid-template-columns:1fr 1fr;
   grid-template-rows:1fr 1fr;
 }
@@ -180,10 +180,10 @@ btnHold('ArrowUp',document.getElementById('mcUp'));
 btnHold('ArrowDown',document.getElementById('mcDn'));
 btnHold(' ',document.getElementById('mcBk'));
 btnHold('ArrowRight',document.getElementById('mcBo'));
-// Tapping the canvas on mobile also triggers game actions
-document.getElementById('mctrl').addEventListener('click',e=>{
-  if(e.target===document.getElementById('mctrl'))handleAction();
-});
+// Any tap on the overlay (including corner buttons) starts/advances game when not playing
+const mctrl=document.getElementById('mctrl');
+mctrl.addEventListener('touchend',e=>{e.preventDefault();handleAction();},{passive:false});
+mctrl.addEventListener('click',handleAction);
 
 // ── Player ────────────────────────────────────────────────
 const pl={
