@@ -13,62 +13,53 @@ canvas{display:block;width:100%;height:auto;border-radius:6px;cursor:pointer;box
 .brk{color:#ff5555;border-color:rgba(255,85,85,.4)}
 .bst{color:#e8a030;border-color:rgba(232,160,48,.4)}
 
-/* ── Mobile landscape: canvas fits screen height, corner buttons only ── */
+/* ── Mobile landscape: side-strip controls in the black bars beside canvas ── */
+#sideL,#sideR{display:none;}
 @media (orientation:landscape) and (max-height:500px){
-  html,body{height:100svh;align-items:center;justify-content:center;}
-  #wrap{width:auto;max-width:none;height:100svh;}
-  canvas{width:auto;height:100svh;max-height:100svh;border-radius:0;}
+  html,body{flex-direction:row;align-items:stretch;height:100svh;overflow:hidden;}
+  #sideL,#sideR{
+    display:flex;flex-direction:column;
+    flex:1;min-width:0;
+    background:#0a0f14;
+  }
+  #wrap{flex:0 0 auto;height:100svh;width:auto;position:relative;}
+  canvas{height:100svh;width:auto;border-radius:0;display:block;}
   #btns{display:none;}
-  .mc{display:flex !important;}
 }
-/* 4 individual corner buttons — hidden on desktop, shown on mobile landscape */
+/* Side-strip buttons */
 .mc{
-  display:none;
-  position:fixed;z-index:20;
-  width:110px;height:72px;
-  flex-direction:column;align-items:center;justify-content:center;gap:4px;
-  font-family:'Courier New',monospace;font-weight:bold;font-size:13px;
-  line-height:1.3;text-align:center;
-  color:#f8f4ec;
-  background:rgba(10,15,20,0.6);
-  border:1.5px solid rgba(255,255,255,0.22);
-  border-radius:14px;
+  flex:1;width:100%;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;
+  font-family:'Courier New',monospace;font-weight:bold;font-size:12px;
+  line-height:1.3;text-align:center;color:#f8f4ec;
+  background:rgba(255,255,255,0.04);
+  border:none;outline:none;
   cursor:pointer;user-select:none;touch-action:none;
-  transition:background .08s, border-color .08s;
+  transition:background .08s;
 }
-.mc:active,.mc.held{background:rgba(60,90,130,0.85);border-color:rgba(255,255,255,.5);}
-#mcUp {top:10px; left:10px;}
-#mcDn {bottom:max(10px,env(safe-area-inset-bottom,10px)); left:10px;}
-#mcBo {top:10px; right:10px; color:#e8a030; border-color:rgba(232,160,48,.35);}
-#mcBo:active,#mcBo.held{background:rgba(80,55,10,0.85);}
-#mcBk {bottom:max(10px,env(safe-area-inset-bottom,10px)); right:10px; color:#ff5555; border-color:rgba(255,85,85,.35);}
-#mcBk:active,#mcBk.held{background:rgba(80,15,15,0.85);}
-
-/* ── Rotate overlay ── */
-#rotate{display:none;position:fixed;inset:0;z-index:999;background:#0a0f14;
-  flex-direction:column;align-items:center;justify-content:center;gap:28px;}
-#rotate svg{width:80px;height:80px;animation:rotatePh 2s ease-in-out infinite;}
-@keyframes rotatePh{0%,15%{transform:rotate(0deg);}55%,100%{transform:rotate(90deg);}}
-#rotate .msg{color:#f8f4ec;font-size:18px;font-family:'Courier New',monospace;text-align:center;line-height:1.7;}
-#rotate .sub{color:#4acd4a;font-size:13px;}
-@media (orientation:portrait){#rotate{display:flex;}}
+.mc svg{width:28px;height:28px;display:block;}
+.mc:active,.mc.held{background:rgba(60,90,130,0.5);}
+/* Divider between the two buttons in each strip */
+#mcUp{border-bottom:1px solid rgba(255,255,255,0.08);}
+#mcBo{border-bottom:1px solid rgba(255,255,255,0.08);color:#e8a030;}
+#mcBo:active,#mcBo.held{background:rgba(80,50,10,0.5);}
+#mcBk{color:#ff5555;}
+#mcBk:active,#mcBk.held{background:rgba(80,15,15,0.5);}
 </style>
-<!-- Rotate-to-landscape overlay (shown by CSS in portrait, hidden in landscape) -->
-<div id="rotate">
-  <svg viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <!-- Phone outline -->
-    <rect x="22" y="8" width="36" height="64" rx="6" stroke="#4acd4a" stroke-width="3"/>
-    <rect x="33" y="12" width="14" height="3" rx="1.5" fill="#4acd4a"/>
-    <circle cx="40" cy="64" r="3" fill="#4acd4a"/>
-    <!-- Curved arrow suggesting rotation -->
-    <path d="M10 38 A30 30 0 0 1 40 8" stroke="#e8a030" stroke-width="3" stroke-linecap="round" fill="none"/>
-    <polygon points="6,32 14,32 10,42" fill="#e8a030"/>
-  </svg>
-  <div class="msg">Rotate your phone<br>to landscape mode<br><span class="sub">for the best experience</span></div>
+<!-- Left strip: lane controls -->
+<div id="sideL">
+  <button id="mcUp" class="mc">
+    <svg viewBox="0 0 28 28" fill="none"><polyline points="4,20 14,8 24,20" stroke="#f8f4ec" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/></svg>
+    LANE UP
+  </button>
+  <button id="mcDn" class="mc">
+    <svg viewBox="0 0 28 28" fill="none"><polyline points="4,8 14,20 24,8" stroke="#f8f4ec" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/></svg>
+    LANE DOWN
+  </button>
 </div>
 <div id="wrap">
   <canvas id="c" width="900" height="540"></canvas>
-  <!-- Desktop bottom controls -->
+  <!-- Desktop / portrait bottom controls -->
   <div id="btns">
     <button id="bUp" class="btn">LANE UP</button>
     <button id="bDn" class="btn">LANE DOWN</button>
@@ -76,11 +67,17 @@ canvas{display:block;width:100%;height:auto;border-radius:6px;cursor:pointer;box
     <button id="bBo" class="btn bst">GO FASTER</button>
   </div>
 </div>
-<!-- Mobile corner controls: 4 individual fixed buttons, transparent centre -->
-<button id="mcUp" class="mc">UP<br>LANE UP</button>
-<button id="mcDn" class="mc">DOWN<br>LANE DOWN</button>
-<button id="mcBo" class="mc">GO<br>FASTER</button>
-<button id="mcBk" class="mc">SLOW<br>DOWN</button>
+<!-- Right strip: speed controls -->
+<div id="sideR">
+  <button id="mcBo" class="mc">
+    <svg viewBox="0 0 28 28" fill="none"><polyline points="4,8 16,14 4,20" stroke="#e8a030" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/><polyline points="13,8 25,14 13,20" stroke="#e8a030" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/></svg>
+    GO FASTER
+  </button>
+  <button id="mcBk" class="mc">
+    <svg viewBox="0 0 28 28" fill="none"><rect x="5" y="7" width="7" height="14" rx="1.5" fill="#ff5555"/><rect x="16" y="7" width="7" height="14" rx="1.5" fill="#ff5555"/></svg>
+    SLOW DOWN
+  </button>
+</div>
 <script>
 'use strict';
 const cv=document.getElementById('c'),cx=cv.getContext('2d');
