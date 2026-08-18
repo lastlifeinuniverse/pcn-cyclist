@@ -9,6 +9,11 @@ html,body{background:#0a0f14;height:100%;display:flex;align-items:center;justify
 canvas{display:block;width:100%;height:auto;border-radius:6px;cursor:pointer;box-shadow:0 0 60px rgba(74,180,74,0.25),0 0 120px rgba(74,180,74,0.08)}
 #btns{position:absolute;bottom:8px;left:50%;transform:translateX(-50%);display:flex;gap:8px;align-items:center}
 .btn{background:rgba(20,28,38,.82);color:#f8f4ec;border:1.5px solid rgba(255,255,255,.2);border-radius:8px;padding:12px 22px;font-size:17px;font-family:'Courier New',monospace;cursor:pointer;user-select:none;touch-action:none;transition:background .1s}
+@media (orientation:portrait) and (max-width:600px){
+  #btns{gap:5px;}
+  .btn{padding:7px 11px;font-size:12px;background:rgba(20,28,38,.38);border-color:rgba(255,255,255,.15);}
+  .btn:active,.btn.held{background:rgba(60,80,100,.6);}
+}
 .btn:active,.btn.held{background:rgba(60,80,100,.9);border-color:rgba(255,255,255,.5)}
 .brk{color:#ff5555;border-color:rgba(255,85,85,.4)}
 .bst{color:#e8a030;border-color:rgba(232,160,48,.4)}
