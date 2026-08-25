@@ -149,6 +149,13 @@ const DESTS=[
   {name:'Marina Barrage',d:5000},
   {name:'East Coast Park',d:7500},
 ];
+// Testing shortcut: open with ?lvl=3 (0-indexed, see DESTS above) to jump straight
+// to a level from the title screen — e.g. uncle_sim_pcn.html?lvl=3 for East Coast Park.
+(function(){
+  const q=new URLSearchParams(location.search).get('lvl');
+  const n=parseInt(q,10);
+  if(!isNaN(n)&&n>=0&&n<DESTS.length)lvl=n;
+})();
 
 // ── Input ─────────────────────────────────────────────────
 const K={};
@@ -246,6 +253,15 @@ function addFx(x,y,type){
     // "BUMP!" text float
     fx.push({x,y:y-20,vx:0,vy:-40,life:.9,ml:.9,r:0,col:'#fff',text:'BUMP!'});
   }
+  if(type==='powerup'){
+    for(let i=0;i<16;i++){
+      const a=Math.random()*Math.PI*2,s=50+Math.random()*90;
+      fx.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s-40,
+        life:.7+Math.random()*.3,ml:1,r:2+Math.random()*3,
+        col:Math.random()<.5?'#8a5a3a':'#ffd8e8'});
+    }
+    fx.push({x,y:y-24,vx:0,vy:-45,life:1,ml:1,r:0,col:'#ffd83a',text:'+BOOST!'});
+  }
 }
 function updFx(dt){
   fx=fx.filter(p=>{p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=120*dt;p.life-=dt;return p.life>0;});
@@ -325,7 +341,7 @@ function spawnObs(){
     if(gSpeed<OLIMITS[tp])return false;
     if(tp==='monkey'&&lvl<1)return false;
     if(tp==='kite'&&lvl<2)return false;
-    if(tp==='oncoming'&&lvl<2)return false; // oncoming cyclists only at Marina Barrage+
+    if(tp==='oncoming'&&(lvl<2||Math.random()<.7))return false; // rare — only ~30% of eligible spawns even offer it
     if((tp==='crab'||tp==='beachball'||tp==='otter')&&lvl<3)return false; // beach hazards only at East Coast
     return true;
   });
@@ -446,12 +462,12 @@ function updObs(dt){
 }
 
 // ── Pigeons (East Coast Park) ──────────────────────────────
-let pigeons=[],pigeonT=4;
+let pigeons=[],pigeonT=6;
 function updPigeons(dt){
   if(lvl===3){
     pigeonT-=dt;
     if(pigeonT<=0){
-      pigeonT=3.5+Math.random()*3.5;
+      pigeonT=7+Math.random()*6;
       const lane=Math.floor(Math.random()*3);
       pigeons.push({
         x:W+40,y:RT-40-Math.random()*50,
@@ -479,6 +495,55 @@ function updPigeons(dt){
   });
 }
 function drawPigeons(){pigeons.forEach(drawPigeon);}
+
+// ── Power-ups ─────────────────────────────────────────────
+let powerups=[],powerupT=8;
+function updPowerups(dt){
+  powerupT-=dt;
+  if(powerupT<=0){
+    powerupT=10+Math.random()*8;
+    const lane=Math.floor(Math.random()*3);
+    powerups.push({lane,x:W+90,y:LY[lane],w:26,h:30,anim:Math.random()*10});
+  }
+  const spd=effSpeed();
+  powerups=powerups.filter(p=>{
+    p.x-=spd*dt;p.anim+=dt*3;
+    if(p.x<-60)return false;
+    const pb=pl.box(),m=6;
+    if(pb.x+m<p.x+p.w/2&&pb.x+pb.w-m>p.x-p.w/2&&
+       pb.y+m<p.y+p.h/2&&pb.y+pb.h-m>p.y-p.h/2){
+      pl.inv=Math.max(pl.inv,8);
+      addFx(p.x,p.y,'powerup');
+      return false;
+    }
+    return true;
+  });
+}
+function drawBubbleTea(a){
+  const bob=Math.sin(a*2)*2;
+  cx.save();cx.translate(0,bob);
+  cx.fillStyle='rgba(0,0,0,.12)';cx.beginPath();cx.ellipse(0,17,12,3.5,0,0,Math.PI*2);cx.fill();
+  // Cup (tapered)
+  cx.fillStyle='rgba(230,220,255,.55)';
+  cx.beginPath();
+  cx.moveTo(-9,-12);cx.lineTo(9,-12);cx.lineTo(7,14);cx.lineTo(-7,14);cx.closePath();cx.fill();
+  cx.strokeStyle='rgba(255,255,255,.8)';cx.lineWidth=1;cx.stroke();
+  // Tea fill
+  cx.fillStyle='#d89858';
+  cx.beginPath();
+  cx.moveTo(-8,-4);cx.lineTo(8,-4);cx.lineTo(6.5,13);cx.lineTo(-6.5,13);cx.closePath();cx.fill();
+  // Boba pearls
+  cx.fillStyle='#3a2416';
+  [[-3,9],[2,10],[-1,5],[4,6],[0,1]].forEach(([bx,by])=>{
+    cx.beginPath();cx.arc(bx,by,1.6,0,Math.PI*2);cx.fill();
+  });
+  // Lid + straw
+  cx.fillStyle='#f0ecff';cx.fillRect(-10,-14,20,3);
+  cx.strokeStyle='#ff5a8a';cx.lineWidth=3;cx.lineCap='round';
+  cx.beginPath();cx.moveTo(4,-14);cx.lineTo(6,-24);cx.stroke();
+  cx.restore();
+}
+function drawPowerups(){powerups.forEach(p=>{cx.save();cx.translate(p.x,p.y);drawBubbleTea(p.anim);cx.restore();});}
 
 // ── Draw helpers ──────────────────────────────────────────
 function rrect(x,y,w,h,r){
@@ -883,40 +948,60 @@ function drawCat(a){
 }
 
 function drawJogger(a){
+  const beach=lvl===3;
   const ls=Math.sin(a*2)*14,as=Math.sin(a*2+Math.PI)*18;
   cx.fillStyle='rgba(0,0,0,.13)';cx.beginPath();cx.ellipse(0,32,11,3.5,0,0,Math.PI*2);cx.fill();
-  cx.strokeStyle='#3a3a6a';cx.lineWidth=5;cx.lineCap='round';
+  cx.strokeStyle=beach?'#e8a08a':'#3a3a6a';cx.lineWidth=5;cx.lineCap='round';
   cx.beginPath();cx.moveTo(0,10);cx.lineTo(-5+ls*.35,24);cx.lineTo(-8+ls*.6,38);cx.stroke();
   cx.beginPath();cx.moveTo(0,10);cx.lineTo(5-ls*.35,24);cx.lineTo(8-ls*.6,38);cx.stroke();
   cx.fillStyle='#ee3030';cx.beginPath();cx.ellipse(-8+ls*.6,39,6,3,-.3,0,Math.PI*2);cx.fill();
   cx.beginPath();cx.ellipse(8-ls*.6,39,6,3,.3,0,Math.PI*2);cx.fill();
-  cx.fillStyle=P.jogR;cx.beginPath();cx.ellipse(0,-1,9,14,0,0,Math.PI*2);cx.fill();
+  cx.fillStyle=beach?'#ff7043':P.jogR;cx.beginPath();cx.ellipse(0,-1,9,14,0,0,Math.PI*2);cx.fill();
+  if(beach){
+    cx.fillStyle='#1aa8c8'; // swim trunks
+    cx.beginPath();cx.ellipse(0,9,9,6,0,0,Math.PI*2);cx.fill();
+  }
   cx.strokeStyle='#e8a08a';cx.lineWidth=4;
   cx.beginPath();cx.moveTo(0,-6);cx.lineTo(11+as*.3,5);cx.stroke();
   cx.beginPath();cx.moveTo(0,-6);cx.lineTo(-11-as*.3,5);cx.stroke();
   cx.fillStyle='#e8a08a';cx.beginPath();cx.arc(0,-22,10,0,Math.PI*2);cx.fill();
-  cx.fillStyle=P.jogR;cx.beginPath();cx.arc(0,-29,8,Math.PI,0);cx.fill();
+  cx.fillStyle=beach?'#1aa8c8':P.jogR;cx.beginPath();cx.arc(0,-29,8,Math.PI,0);cx.fill();
   cx.fillRect(-8,-31,16,5);
+  if(beach){
+    cx.strokeStyle='#111';cx.lineWidth=1.5; // sunglasses
+    cx.beginPath();cx.arc(-4,-23,2.6,0,Math.PI*2);cx.stroke();
+    cx.beginPath();cx.arc(4,-23,2.6,0,Math.PI*2);cx.stroke();
+  }
 }
 
 function drawPed(a,wide){
+  const beach=lvl===3;
   const ls=Math.sin(a*1.5)*10,as=Math.sin(a*1.5+Math.PI)*12;
   cx.fillStyle='rgba(0,0,0,.1)';cx.beginPath();cx.ellipse(0,30,wide?14:10,3,0,0,Math.PI*2);cx.fill();
-  cx.strokeStyle='#3a3a6a';cx.lineWidth=5;cx.lineCap='round';
+  cx.strokeStyle=beach?'#c8906c':'#3a3a6a';cx.lineWidth=5;cx.lineCap='round';
   cx.beginPath();cx.moveTo(0,10);cx.lineTo(-4+ls,24);cx.lineTo(-6+ls,36);cx.stroke();
   cx.beginPath();cx.moveTo(0,10);cx.lineTo(4-ls,24);cx.lineTo(6-ls,36);cx.stroke();
-  cx.fillStyle='#333';
+  cx.fillStyle=beach?'#f5f2ea':'#333';
   cx.beginPath();cx.ellipse(-6+ls,37,5,2.5,-.2,0,Math.PI*2);cx.fill();
   cx.beginPath();cx.ellipse(6-ls,37,5,2.5,.2,0,Math.PI*2);cx.fill();
-  cx.fillStyle=P.ped;cx.beginPath();cx.ellipse(0,-2,wide?12:10,14,0,0,Math.PI*2);cx.fill();
+  cx.fillStyle=beach?'#e8a23a':P.ped;cx.beginPath();cx.ellipse(0,-2,wide?12:10,14,0,0,Math.PI*2);cx.fill();
+  if(beach){
+    cx.fillStyle='#2f8fd0'; // board shorts / sarong
+    cx.beginPath();cx.ellipse(0,9,wide?11:9,6,0,0,Math.PI*2);cx.fill();
+  }
   cx.strokeStyle='#c8906c';cx.lineWidth=4;
   cx.beginPath();cx.moveTo(0,-5);cx.lineTo(10+as*.3,7);cx.stroke();
   cx.beginPath();cx.moveTo(0,-5);cx.lineTo(-10-as*.3,7);cx.stroke();
   cx.fillStyle='#c8906c';cx.beginPath();cx.arc(0,-22,10,0,Math.PI*2);cx.fill();
-  // Straw hat
+  // Straw hat — already beach-appropriate, kept for both variants
   cx.fillStyle='#d4b860';
   cx.beginPath();cx.ellipse(0,-31,wide?16:13,4,0,0,Math.PI*2);cx.fill();
   cx.beginPath();cx.arc(0,-32,8,Math.PI,0);cx.fill();
+  if(beach){
+    cx.strokeStyle='#111';cx.lineWidth=1.5; // sunglasses
+    cx.beginPath();cx.arc(-4,-23,2.6,0,Math.PI*2);cx.stroke();
+    cx.beginPath();cx.arc(4,-23,2.6,0,Math.PI*2);cx.stroke();
+  }
 }
 
 function drawObsCyclist(a){
@@ -1047,24 +1132,52 @@ function drawBeachBall(a){
   cx.restore();
 }
 
-function drawOtterFamily(a){
-  const spots=[[-22,-16],[20,-16],[0,18]];
-  spots.forEach(([ox,oy],i)=>{
-    const bob=Math.sin(a*7+i*2)*3;
-    cx.save();cx.translate(ox,oy+bob);
-    cx.strokeStyle='#5a3f26';cx.lineWidth=3;cx.lineCap='round';
-    cx.beginPath();cx.moveTo(-6,6);cx.lineTo(-6+Math.sin(a*9+i)*7,15);cx.stroke();
-    cx.beginPath();cx.moveTo(6,6);cx.lineTo(6+Math.sin(a*9+i+3)*7,15);cx.stroke();
-    cx.strokeStyle='#7a5a3a';cx.lineWidth=6;
-    cx.beginPath();cx.moveTo(-12,3);cx.quadraticCurveTo(-24,5,-27,-3);cx.stroke();
-    cx.fillStyle='#7a5a3a';
-    cx.beginPath();cx.ellipse(0,0,14,9,0,0,Math.PI*2);cx.fill();
-    cx.fillStyle='#8a6a48';
-    cx.beginPath();cx.arc(11,-3,6,0,Math.PI*2);cx.fill();
-    cx.fillStyle='#3a2a1a';
-    cx.beginPath();cx.arc(14,-4,1.6,0,Math.PI*2);cx.fill();
-    cx.restore();
+function drawOtter(x,y,a,sc){
+  cx.save();cx.translate(x,y);cx.scale(sc,sc);
+  const run=Math.sin(a*9)*5;
+  // Shadow
+  cx.fillStyle='rgba(0,0,0,.12)';cx.beginPath();cx.ellipse(0,17,20,4,0,0,Math.PI*2);cx.fill();
+  // Tail — long, tapering, flattened rudder shape, low to the ground
+  cx.fillStyle='#5c4530';
+  cx.beginPath();
+  cx.moveTo(-14,4);
+  cx.quadraticCurveTo(-30,3,-40,-2);
+  cx.quadraticCurveTo(-30,9,-14,11);
+  cx.closePath();cx.fill();
+  // Stubby running legs
+  cx.strokeStyle='#4a3620';cx.lineWidth=4;cx.lineCap='round';
+  cx.beginPath();cx.moveTo(-8,10);cx.lineTo(-8+run,17);cx.stroke();
+  cx.beginPath();cx.moveTo(7,10);cx.lineTo(7-run,17);cx.stroke();
+  // Body — long, low, streamlined (elongated ellipse, longer than tall)
+  cx.fillStyle='#6b5238';
+  cx.beginPath();cx.ellipse(0,2,20,10,0,0,Math.PI*2);cx.fill();
+  // Pale belly patch
+  cx.fillStyle='#a8886a';
+  cx.beginPath();cx.ellipse(0,7,15,5,0,0,Math.PI*2);cx.fill();
+  // Head — rounded, flows into the body, flattened muzzle
+  cx.fillStyle='#6b5238';
+  cx.beginPath();cx.ellipse(20,-2,10,8,-.15,0,Math.PI*2);cx.fill();
+  cx.fillStyle='#a8886a';
+  cx.beginPath();cx.ellipse(24,1,5,3.4,-.1,0,Math.PI*2);cx.fill();
+  // Small round ears
+  cx.fillStyle='#5c4530';
+  cx.beginPath();cx.arc(15,-9,3,0,Math.PI*2);cx.fill();
+  cx.beginPath();cx.arc(23,-10,3,0,Math.PI*2);cx.fill();
+  // Nose
+  cx.fillStyle='#221812';cx.beginPath();cx.ellipse(29,0,2,1.6,0,0,Math.PI*2);cx.fill();
+  // Eye
+  cx.fillStyle='#1a1a1a';cx.beginPath();cx.arc(21,-4,1.6,0,Math.PI*2);cx.fill();
+  // Whiskers
+  cx.strokeStyle='rgba(255,255,255,.55)';cx.lineWidth=.8;
+  [1,3,5].forEach(dy=>{
+    cx.beginPath();cx.moveTo(27,dy-2);cx.lineTo(36,dy-4);cx.stroke();
   });
+  cx.restore();
+}
+function drawOtterFamily(a){
+  drawOtter(-16,15,a,.62);
+  drawOtter(14,15,a+1.3,.62);
+  drawOtter(0,-14,a+2.6,.85);
 }
 
 function drawPoop(a){
@@ -1555,7 +1668,7 @@ const LEVEL_BSPEEDS=[180,240,300,360];
 function startGame(){
   st='playing';lives=3;dist=0;score=0;
   bSpeed=LEVEL_BSPEEDS[lvl]||180;
-  gSpeed=bSpeed;obs=[];fx=[];spawnT=0;pigeons=[];pigeonT=3+Math.random()*3;
+  gSpeed=bSpeed;obs=[];fx=[];spawnT=0;pigeons=[];pigeonT=6+Math.random()*4;powerups=[];powerupT=6+Math.random()*5;
   spawnI=Math.max(.7,2.8-lvl*.4); // harder levels spawn faster
   flash=0;env_x=0;confetti=[];
   weather='clear';weatherTimer=20+Math.random()*20;rainIntensity=0;rainDrops=[];
@@ -1598,6 +1711,7 @@ function frame(ts){
     if(spawnT<=0){spawnObs();spawnT=spawnI+(Math.random()-.5)*.7;}
     updObs(dt);
     updPigeons(dt);
+    updPowerups(dt);
     updFx(dt);
   }
   // Draw
@@ -1609,6 +1723,7 @@ function frame(ts){
     drawTrees();drawLamps();drawRoad();drawCanal();
     drawPigeons();
     obs.forEach(o=>{if(o.x>PX)drawObs(o);});
+    drawPowerups();
     drawUncle(PX,pl.y+pl.hopY(),pl.pedA,pl.wob,pl.inv);
     obs.forEach(o=>{if(o.x<=PX)drawObs(o);});
     drawSpeedLines();
