@@ -78,7 +78,6 @@ canvas{display:block;width:100%;height:auto;border-radius:6px;cursor:pointer;box
 </div>
 <div id="wrap">
   <canvas id="c" width="900" height="540"></canvas>
-  <div id="tip">Rotate to landscape for better experience</div>
   <!-- Desktop / portrait bottom controls -->
   <div id="btns">
     <button id="bUp" class="btn">LANE UP</button>
@@ -1194,6 +1193,19 @@ function drawTitle(){
   if(Math.sin(t*2)>0){cx.fillStyle=P.wht;cx.font='bold 15px Courier New';cx.fillText('[ CLICK HERE OR PRESS SPACE TO RIDE ]',W/2,244);}
   cx.fillStyle='rgba(248,244,236,.4)';cx.font='10px Courier New';
   cx.fillText('↑↓ lane  ·  → boost  ·  SPACE brake',W/2,496);
+  // Portrait tip — fades out after ~5s then gone
+  if(window.innerHeight>window.innerWidth&&t<5){
+    const alpha=t<0.5?t/0.5:t>4?1-(t-4):1;
+    const tip='Rotate to landscape for better experience';
+    cx.font='12px Courier New';
+    const tw=cx.measureText(tip).width;
+    cx.fillStyle=`rgba(8,12,18,${alpha*.88})`;
+    rrect(W/2-tw/2-14,14,tw+28,30,15);cx.fill();
+    cx.strokeStyle=`rgba(74,205,74,${alpha*.4})`;cx.lineWidth=1;
+    rrect(W/2-tw/2-14,14,tw+28,30,15);cx.stroke();
+    cx.fillStyle=`rgba(74,205,74,${alpha})`;cx.textAlign='center';
+    cx.fillText(tip,W/2,34);
+  }
   cx.textAlign='left';
 }
 
