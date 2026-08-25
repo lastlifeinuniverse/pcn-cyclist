@@ -215,10 +215,10 @@ const pl={
     this.wob=Math.max(0,this.wob-dt*2.5);
   },
   hopY(){return this.hop>0?Math.sin(this.hop*Math.PI)*(-26):0;},
-  hit(){
+  hit(amt=1){
     if(this.inv>0)return false;
-    this.wob=1.4;flash=.7;this.inv=2.2;
-    lives--;addFx(PX,this.y,'hit');
+    this.wob=1.4;flash=.7;this.inv=amt>=1?2.2:1.3;
+    lives-=amt;addFx(PX,this.y,'hit');
     return true;
   },
   box(){return{x:PX-22,y:this.y-26,w:50,h:52};}
@@ -317,8 +317,8 @@ function effSpeed(){return gSpeed*(1+pl.velM*.65);}
 
 // ── Obstacles ─────────────────────────────────────────────
 let obs=[];
-const OTYPES=['jogger','pedestrian','cat','cyclist','barrier','puddle','speedbump','monkey','kite','oncoming'];
-const OLIMITS={jogger:0,pedestrian:0,cat:200,cyclist:230,barrier:260,puddle:0,speedbump:0,monkey:0,kite:0,oncoming:0};
+const OTYPES=['jogger','pedestrian','cat','cyclist','barrier','puddle','speedbump','monkey','kite','oncoming','crab','beachball','otter'];
+const OLIMITS={jogger:0,pedestrian:0,cat:200,cyclist:230,barrier:260,puddle:0,speedbump:0,monkey:0,kite:0,oncoming:0,crab:0,beachball:0,otter:0};
 
 function spawnObs(){
   let avail=OTYPES.filter(tp=>{
@@ -326,27 +326,40 @@ function spawnObs(){
     if(tp==='monkey'&&lvl<1)return false;
     if(tp==='kite'&&lvl<2)return false;
     if(tp==='oncoming'&&lvl<2)return false; // oncoming cyclists only at Marina Barrage+
+    if((tp==='crab'||tp==='beachball'||tp==='otter')&&lvl<3)return false; // beach hazards only at East Coast
     return true;
   });
   if(weather==='rain') avail=[...avail,'puddle','puddle','puddle'];
-  if(lvl>=1) avail=[...avail,'monkey','speedbump'];
-  if(lvl>=2) avail=[...avail,'kite','oncoming']; // one kite, one oncoming
+  if(lvl===1||lvl===2) avail=[...avail,'monkey','speedbump'];
+  if(lvl===2) avail=[...avail,'kite','oncoming']; // kept minimal again at East Coast
+  if(lvl===3) avail=[...avail,'crab','crab','beachball','otter'];
   const tp=avail[Math.floor(Math.random()*avail.length)];
-  const lane=Math.floor(Math.random()*3);
+  let lane=Math.floor(Math.random()*3);
   const dim={
     jogger:{w:22,h:52},pedestrian:{w:22,h:50},
     cat:{w:32,h:22},cyclist:{w:58,h:62},
     barrier:{w:38,h:58},puddle:{w:65,h:28},
     speedbump:{w:70,h:18},monkey:{w:28,h:38},kite:{w:34,h:34},
-    oncoming:{w:58,h:62},
+    oncoming:{w:58,h:62},crab:{w:34,h:22},beachball:{w:30,h:30},
+    otter:{w:72,h:(RH/3)*2},
   }[tp];
-  const kiteStartY = tp==='kite' ? LY[1] : LY[lane];
+  let oy;
+  if(tp==='kite'){oy=LY[1];}
+  else if(tp==='otter'){
+    // Family runs across two adjacent lanes — leaves only the third lane free
+    const startLane=Math.random()<.5?0:1;
+    lane=startLane;
+    oy=(LY[startLane]+LY[startLane+1])/2;
+  } else {
+    oy=LY[lane];
+  }
   const startX = W+90; // all obstacles spawn from right
   obs.push({
-    tp,lane,x:startX,y:kiteStartY,
+    tp,lane,x:startX,y:oy,
     w:dim.w,h:dim.h,
     vx:{jogger:-55,pedestrian:-25,cat:0,cyclist:-35,barrier:0,puddle:0,
-        speedbump:0,monkey:-20,kite:40,oncoming:200}[tp],
+        speedbump:0,monkey:-20,kite:40,oncoming:200,
+        crab:0,beachball:0,otter:-25}[tp],
     anim:Math.random()*10,
     cdir:Math.random()<.5?-1:1,ctimer:1+Math.random()*2,
     wide:tp==='pedestrian'&&Math.random()<.25,
@@ -372,14 +385,17 @@ function updObs(dt){
         if(o.y>LY[2]+30){o.y=LY[2]+30;o.cdir=-1;}
       }
     }
-    if(o.tp==='monkey'){
+    if(o.tp==='monkey'||o.tp==='beachball'){
       o.jumpTimer-=dt;
       if(o.jumpTimer<0){
         o.lane=Math.floor(Math.random()*3);
         o.y=LY[o.lane];
-        o.jumpTimer=0.6+Math.random()*1.2;
+        o.jumpTimer=(o.tp==='beachball'?0.9:0.6)+Math.random()*1.2;
         o.anim=0;
       }
+    }
+    if(o.tp==='poop'&&o.fallTargetY!==undefined){
+      o.y=Math.min(o.fallTargetY,o.y+240*dt);
     }
     if(o.tp==='kite'){
       // Kite sweeps up and down through all lanes — hard to predict
@@ -415,6 +431,11 @@ function updObs(dt){
             pl.wob=Math.max(pl.wob,.7);pl.velM=Math.min(pl.velM,-.2);return false;
           }
         }
+        if(o.tp==='poop'){
+          const hit=pl.hit(0.5);
+          if(hit&&lives<=0){st='over';}
+          return !hit;
+        }
         const hit=pl.hit();
         if(hit&&lives<=0){st='over';}
         return !hit;
@@ -423,6 +444,41 @@ function updObs(dt){
     return true;
   });
 }
+
+// ── Pigeons (East Coast Park) ──────────────────────────────
+let pigeons=[],pigeonT=4;
+function updPigeons(dt){
+  if(lvl===3){
+    pigeonT-=dt;
+    if(pigeonT<=0){
+      pigeonT=3.5+Math.random()*3.5;
+      const lane=Math.floor(Math.random()*3);
+      pigeons.push({
+        x:W+40,y:RT-40-Math.random()*50,
+        vx:-(220+Math.random()*80),
+        wing:Math.random()*10,
+        lane,dropped:false,
+        dropX:PX+260+Math.random()*120,
+      });
+    }
+  }
+  pigeons=pigeons.filter(p=>{
+    p.x+=p.vx*dt;
+    p.wing+=dt*16;
+    if(!p.dropped&&p.x<=p.dropX){
+      p.dropped=true;
+      obs.push({
+        tp:'poop',lane:p.lane,x:p.x,y:p.y,
+        w:14,h:14,vx:0,anim:0,
+        cdir:1,ctimer:0,wide:false,jumpTimer:0,
+        kiteBaseY:0,kiteSweep:0,kiteFreq:0,kitePhase:0,kiteTailAng:0,
+        fallTargetY:LY[p.lane],
+      });
+    }
+    return p.x>-60;
+  });
+}
+function drawPigeons(){pigeons.forEach(drawPigeon);}
 
 // ── Draw helpers ──────────────────────────────────────────
 function rrect(x,y,w,h,r){
@@ -697,6 +753,10 @@ function drawObs(o){
   else if(o.tp==='monkey')drawMonkey(o.anim);
   else if(o.tp==='kite')drawKite(o.anim,o.kiteTailAng||0);
   else if(o.tp==='oncoming')drawOncoming(o.anim);
+  else if(o.tp==='crab')drawCrab(o.anim);
+  else if(o.tp==='beachball')drawBeachBall(o.anim);
+  else if(o.tp==='otter')drawOtterFamily(o.anim);
+  else if(o.tp==='poop')drawPoop(o.anim);
   cx.restore();
 }
 
@@ -949,6 +1009,108 @@ function drawOncoming(a){
   cx.textAlign='left';cx.restore();
 }
 
+function drawCrab(a){
+  const sc=Math.sin(a*3)*3; // sideways scuttle wiggle
+  cx.save();cx.translate(sc,0);
+  cx.fillStyle='rgba(0,0,0,.12)';cx.beginPath();cx.ellipse(0,12,17,4,0,0,Math.PI*2);cx.fill();
+  cx.strokeStyle='#b53a1e';cx.lineWidth=2;
+  for(let i=-1;i<=1;i+=2){
+    for(let j=0;j<3;j++){
+      cx.beginPath();cx.moveTo(i*9,1+j*2);cx.lineTo(i*(17+j*2),7+j*3);cx.stroke();
+    }
+  }
+  cx.fillStyle='#d64a2a';
+  cx.beginPath();cx.ellipse(0,4,15,9,0,0,Math.PI*2);cx.fill();
+  cx.fillStyle='#e85a34';
+  cx.beginPath();cx.ellipse(-15,-2,6,5,0,0,Math.PI*2);cx.fill();
+  cx.beginPath();cx.ellipse(15,-2,6,5,0,0,Math.PI*2);cx.fill();
+  cx.fillStyle='#222';
+  cx.beginPath();cx.arc(-5,-3,2,0,Math.PI*2);cx.fill();
+  cx.beginPath();cx.arc(5,-3,2,0,Math.PI*2);cx.fill();
+  cx.restore();
+}
+
+function drawBeachBall(a){
+  const bounce=Math.abs(Math.sin(a*2))*6;
+  cx.fillStyle='rgba(0,0,0,.15)';
+  cx.beginPath();cx.ellipse(0,16,13,4,0,0,Math.PI*2);cx.fill();
+  cx.save();cx.translate(0,-bounce);
+  const cols=['#e8342a','#3a7ee8','#eecc22','#3ab54a'];
+  cols.forEach((c,i)=>{
+    cx.fillStyle=c;
+    cx.beginPath();cx.moveTo(0,0);
+    cx.arc(0,0,15,(i/4)*Math.PI*2,(i/4+1/4)*Math.PI*2);
+    cx.closePath();cx.fill();
+  });
+  cx.strokeStyle='rgba(0,0,0,.15)';cx.lineWidth=1;
+  cx.beginPath();cx.arc(0,0,15,0,Math.PI*2);cx.stroke();
+  cx.restore();
+}
+
+function drawOtterFamily(a){
+  const spots=[[-22,-16],[20,-16],[0,18]];
+  spots.forEach(([ox,oy],i)=>{
+    const bob=Math.sin(a*7+i*2)*3;
+    cx.save();cx.translate(ox,oy+bob);
+    cx.strokeStyle='#5a3f26';cx.lineWidth=3;cx.lineCap='round';
+    cx.beginPath();cx.moveTo(-6,6);cx.lineTo(-6+Math.sin(a*9+i)*7,15);cx.stroke();
+    cx.beginPath();cx.moveTo(6,6);cx.lineTo(6+Math.sin(a*9+i+3)*7,15);cx.stroke();
+    cx.strokeStyle='#7a5a3a';cx.lineWidth=6;
+    cx.beginPath();cx.moveTo(-12,3);cx.quadraticCurveTo(-24,5,-27,-3);cx.stroke();
+    cx.fillStyle='#7a5a3a';
+    cx.beginPath();cx.ellipse(0,0,14,9,0,0,Math.PI*2);cx.fill();
+    cx.fillStyle='#8a6a48';
+    cx.beginPath();cx.arc(11,-3,6,0,Math.PI*2);cx.fill();
+    cx.fillStyle='#3a2a1a';
+    cx.beginPath();cx.arc(14,-4,1.6,0,Math.PI*2);cx.fill();
+    cx.restore();
+  });
+}
+
+function drawPoop(a){
+  cx.fillStyle='#6b4a23';
+  cx.beginPath();cx.ellipse(0,4,7,5,0,0,Math.PI*2);cx.fill();
+  cx.beginPath();cx.ellipse(0,-1,5,4,0,0,Math.PI*2);cx.fill();
+  cx.beginPath();cx.ellipse(0,-5,3,3,0,0,Math.PI*2);cx.fill();
+  cx.fillStyle='rgba(255,255,255,.7)';
+  cx.beginPath();cx.ellipse(-2,-6,1.2,1.2,0,0,Math.PI*2);cx.fill();
+  cx.beginPath();cx.ellipse(1,-6,1.2,1.2,0,0,Math.PI*2);cx.fill();
+}
+
+function drawPigeon(p){
+  cx.save();cx.translate(p.x,p.y);
+  const wf=Math.sin(p.wing)*13;
+  cx.fillStyle='#6a6a72';
+  cx.beginPath();cx.moveTo(-2,-1);cx.quadraticCurveTo(-14,-5-wf,-19,-wf*.6);cx.quadraticCurveTo(-9,3,-2,2);cx.fill();
+  cx.beginPath();cx.moveTo(2,-1);cx.quadraticCurveTo(14,-5-wf,19,-wf*.6);cx.quadraticCurveTo(9,3,2,2);cx.fill();
+  cx.fillStyle='#8a8a92';
+  cx.beginPath();cx.ellipse(0,0,10,6,0,0,Math.PI*2);cx.fill();
+  cx.fillStyle='#9a9aa2';cx.beginPath();cx.arc(9,-3,4,0,Math.PI*2);cx.fill();
+  cx.fillStyle='#e8a020';cx.beginPath();cx.moveTo(12,-3);cx.lineTo(16,-2);cx.lineTo(12,-1);cx.fill();
+  cx.restore();
+}
+
+function drawBeachBg(){
+  const sea=cx.createLinearGradient(0,RT-70,0,RT);
+  sea.addColorStop(0,'#1a6a8a');sea.addColorStop(1,'#2a8aab');
+  cx.fillStyle=sea;cx.fillRect(0,RT-70,W,70);
+  const waveX=-(env_x*.15%40);
+  cx.strokeStyle='rgba(255,255,255,.35)';cx.lineWidth=2;
+  for(let i=0;i<W/40+2;i++){
+    const wx=waveX+i*40;
+    cx.beginPath();
+    cx.moveTo(wx,RT-30);
+    cx.quadraticCurveTo(wx+10,RT-36,wx+20,RT-30);
+    cx.quadraticCurveTo(wx+30,RT-24,wx+40,RT-30);
+    cx.stroke();
+  }
+  cx.fillStyle='rgba(255,235,180,.9)';
+  cx.beginPath();cx.arc(W-90,RT-95,26,0,Math.PI*2);cx.fill();
+  const sand=cx.createLinearGradient(0,RT-20,0,RT);
+  sand.addColorStop(0,'#e8d3a0');sand.addColorStop(1,'#d9bd80');
+  cx.fillStyle=sand;cx.fillRect(0,RT-20,W,20);
+}
+
 function drawBarrier(){
   const stripes=[[0,'#e8a030'],[1,'#333'],[0,'#e8a030'],[1,'#333'],[0,'#e8a030']];
   let sy=-28;
@@ -1135,15 +1297,24 @@ function drawStar(x,y,r){
   cx.closePath();cx.fill();
 }
 
-function drawHeart(x,y,r,col){
-  cx.fillStyle=col;
+function heartPath(x,y,r){
   cx.beginPath();
   cx.moveTo(x,y+r*.3);
   cx.bezierCurveTo(x,y-r*.5,x-r*1.2,y-r*.5,x-r*1.2,y+r*.2);
   cx.bezierCurveTo(x-r*1.2,y+r*.8,x,y+r*1.4,x,y+r*1.5);
   cx.bezierCurveTo(x,y+r*1.4,x+r*1.2,y+r*.8,x+r*1.2,y+r*.2);
   cx.bezierCurveTo(x+r*1.2,y-r*.5,x,y-r*.5,x,y+r*.3);
-  cx.fill();
+}
+function drawHeart(x,y,r,col,fill=1){
+  cx.save();
+  cx.globalAlpha=.25;cx.fillStyle=col;
+  heartPath(x,y,r);cx.fill();
+  if(fill>0){
+    cx.beginPath();cx.rect(x-r*1.3,y-r*1.7,r*2.6*Math.min(1,fill),r*3.3);cx.clip();
+    cx.globalAlpha=1;cx.fillStyle=col;
+    heartPath(x,y,r);cx.fill();
+  }
+  cx.restore();
 }
 
 function drawMiniCycle(x,y){
@@ -1169,12 +1340,10 @@ function drawHUD(){
   const spd=Math.round((gSpeed+pl.velM*45)*.065);
   cx.fillStyle=P.acc;cx.font='bold 24px Courier New';cx.fillText(spd+'',18,32);
   cx.fillStyle=P.wht;cx.font='10px Courier New';cx.fillText('km/h',54,32);
-  // Hearts (drawn as canvas shapes — no Unicode)
+  // Hearts (drawn as canvas shapes — no Unicode; half-hearts for poop hits)
   for(let i=0;i<3;i++){
-    cx.globalAlpha=i<lives?1:.25;
-    drawHeart(W/2-22+i*26,20,9,P.red);
+    drawHeart(W/2-22+i*26,20,9,P.red,Math.max(0,Math.min(1,lives-i)));
   }
-  cx.globalAlpha=1;
   // Distance
   cx.fillStyle=P.grn;cx.font='bold 18px Courier New';cx.textAlign='right';
   cx.fillText(Math.floor(dist)+'m',W-18,30);cx.textAlign='left';
@@ -1386,7 +1555,7 @@ const LEVEL_BSPEEDS=[180,240,300,360];
 function startGame(){
   st='playing';lives=3;dist=0;score=0;
   bSpeed=LEVEL_BSPEEDS[lvl]||180;
-  gSpeed=bSpeed;obs=[];fx=[];spawnT=0;
+  gSpeed=bSpeed;obs=[];fx=[];spawnT=0;pigeons=[];pigeonT=3+Math.random()*3;
   spawnI=Math.max(.7,2.8-lvl*.4); // harder levels spawn faster
   flash=0;env_x=0;confetti=[];
   weather='clear';weatherTimer=20+Math.random()*20;rainIntensity=0;rainDrops=[];
@@ -1428,6 +1597,7 @@ function frame(ts){
     spawnT-=dt;
     if(spawnT<=0){spawnObs();spawnT=spawnI+(Math.random()-.5)*.7;}
     updObs(dt);
+    updPigeons(dt);
     updFx(dt);
   }
   // Draw
@@ -1435,8 +1605,9 @@ function frame(ts){
   if(st==='title'){drawTitle();}
   else{
     drawSky();
-    if(lvl===1)drawForestBg(); else drawHDB();
+    if(lvl===1)drawForestBg(); else if(lvl===3)drawBeachBg(); else drawHDB();
     drawTrees();drawLamps();drawRoad();drawCanal();
+    drawPigeons();
     obs.forEach(o=>{if(o.x>PX)drawObs(o);});
     drawUncle(PX,pl.y+pl.hopY(),pl.pedA,pl.wob,pl.inv);
     obs.forEach(o=>{if(o.x<=PX)drawObs(o);});
