@@ -201,11 +201,13 @@ document.addEventListener('touchend',()=>{if(st!=='playing')handleAction();},{pa
 // ── Player ────────────────────────────────────────────────
 const pl={
   lane:1,y:LY[1],ty:LY[1],
-  velM:0,pedA:0,wob:0,lnCD:0,inv:0,hop:0,
-  reset(){this.lane=1;this.y=this.ty=LY[1];this.velM=this.pedA=this.wob=this.lnCD=this.inv=this.hop=0;},
+  velM:0,pedA:0,wob:0,lnCD:0,inv:0,hop:0,shieldT:0,healT:0,
+  reset(){this.lane=1;this.y=this.ty=LY[1];this.velM=this.pedA=this.wob=this.lnCD=this.inv=this.hop=this.shieldT=this.healT=0;},
   update(dt){
     this.lnCD=Math.max(0,this.lnCD-dt);
     this.inv=Math.max(0,this.inv-dt);
+    this.shieldT=Math.max(0,this.shieldT-dt);
+    this.healT=Math.max(0,this.healT-dt);
     this.hop=Math.max(0,this.hop-dt*1.8);
     if(this.lnCD<=0){
       if((K.ArrowUp||K.w||K.W)&&this.lane>0){this.lane--;this.lnCD=.22;}
@@ -261,6 +263,14 @@ function addFx(x,y,type){
         col:Math.random()<.5?'#8a5a3a':'#ffd8e8'});
     }
     fx.push({x,y:y-24,vx:0,vy:-45,life:1,ml:1,r:0,col:'#ffd83a',text:'+BOOST!'});
+  }
+  if(type==='heal'){
+    for(let i=0;i<14;i++){
+      const a=Math.random()*Math.PI*2,s=40+Math.random()*80;
+      fx.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s-30,
+        life:.7+Math.random()*.3,ml:1,r:2+Math.random()*3,col:'#ff5a78'});
+    }
+    fx.push({x,y:y-24,vx:0,vy:-45,life:1,ml:1,r:0,col:'#ff8aa0',text:'+1 HEART'});
   }
 }
 function updFx(dt){
@@ -503,7 +513,9 @@ function updPowerups(dt){
   if(powerupT<=0){
     powerupT=10+Math.random()*8;
     const lane=Math.floor(Math.random()*3);
-    powerups.push({lane,x:W+90,y:LY[lane],w:26,h:30,anim:Math.random()*10});
+    // Heal drink only offered while a heart is actually missing
+    const kind=(lives<3&&Math.random()<.5)?'heal':'boost';
+    powerups.push({lane,x:W+90,y:LY[lane],w:26,h:30,anim:Math.random()*10,kind});
   }
   const spd=effSpeed();
   powerups=powerups.filter(p=>{
@@ -512,22 +524,44 @@ function updPowerups(dt){
     const pb=pl.box(),m=6;
     if(pb.x+m<p.x+p.w/2&&pb.x+pb.w-m>p.x-p.w/2&&
        pb.y+m<p.y+p.h/2&&pb.y+pb.h-m>p.y-p.h/2){
-      pl.inv=Math.max(pl.inv,8);
-      addFx(p.x,p.y,'powerup');
+      if(p.kind==='heal'){
+        lives=Math.min(3,lives+1);
+        pl.healT=2.5;
+        addFx(p.x,p.y,'heal');
+      } else {
+        pl.inv=Math.max(pl.inv,8);
+        pl.shieldT=8;
+        addFx(p.x,p.y,'powerup');
+      }
       return false;
     }
     return true;
   });
 }
-function drawBubbleTea(a){
-  const bob=Math.sin(a*2)*2;
-  const pulse=.5+Math.sin(a*3)*.5;
-  // Pulsing glow halo so it reads against the busy backdrop
+function drawPowerupGlow(bob,pulse,col){
   const glow=cx.createRadialGradient(0,bob,2,0,bob,28);
-  glow.addColorStop(0,`rgba(255,220,120,${.5+pulse*.3})`);
-  glow.addColorStop(1,'rgba(255,220,120,0)');
+  glow.addColorStop(0,`rgba(${col},${.5+pulse*.3})`);
+  glow.addColorStop(1,`rgba(${col},0)`);
   cx.fillStyle=glow;
   cx.beginPath();cx.arc(0,bob,28,0,Math.PI*2);cx.fill();
+}
+function drawGrabArrow(a,arrowCol){
+  const arrowY=-40+Math.sin(a*4)*4;
+  cx.fillStyle=arrowCol;
+  cx.beginPath();
+  cx.moveTo(0,arrowY+11);cx.lineTo(-7,arrowY+1);cx.lineTo(-3,arrowY+1);
+  cx.lineTo(-3,arrowY-9);cx.lineTo(3,arrowY-9);cx.lineTo(3,arrowY+1);
+  cx.lineTo(7,arrowY+1);cx.closePath();cx.fill();
+  cx.strokeStyle='rgba(0,0,0,.35)';cx.lineWidth=1;cx.stroke();
+  cx.font='bold 10px Courier New';cx.textAlign='center';
+  cx.strokeStyle='rgba(0,0,0,.65)';cx.lineWidth=3;
+  cx.strokeText('GRAB ME!',0,arrowY-13);
+  cx.fillStyle='#fff';cx.fillText('GRAB ME!',0,arrowY-13);
+  cx.textAlign='left';
+}
+function drawBubbleTea(a){
+  const bob=Math.sin(a*2)*2,pulse=.5+Math.sin(a*3)*.5;
+  drawPowerupGlow(bob,pulse,'255,220,120');
   // Cup
   cx.save();cx.translate(0,bob);
   cx.fillStyle='rgba(0,0,0,.12)';cx.beginPath();cx.ellipse(0,17,12,3.5,0,0,Math.PI*2);cx.fill();
@@ -546,21 +580,34 @@ function drawBubbleTea(a){
   cx.strokeStyle='#ff5a8a';cx.lineWidth=3;cx.lineCap='round';
   cx.beginPath();cx.moveTo(4,-14);cx.lineTo(6,-24);cx.stroke();
   cx.restore();
-  // Bouncing arrow + label pointing it out
-  const arrowY=-40+Math.sin(a*4)*4;
-  cx.fillStyle='#ffd83a';
-  cx.beginPath();
-  cx.moveTo(0,arrowY+11);cx.lineTo(-7,arrowY+1);cx.lineTo(-3,arrowY+1);
-  cx.lineTo(-3,arrowY-9);cx.lineTo(3,arrowY-9);cx.lineTo(3,arrowY+1);
-  cx.lineTo(7,arrowY+1);cx.closePath();cx.fill();
-  cx.strokeStyle='rgba(0,0,0,.35)';cx.lineWidth=1;cx.stroke();
-  cx.font='bold 10px Courier New';cx.textAlign='center';
-  cx.strokeStyle='rgba(0,0,0,.65)';cx.lineWidth=3;
-  cx.strokeText('GRAB ME!',0,arrowY-13);
-  cx.fillStyle='#fff';cx.fillText('GRAB ME!',0,arrowY-13);
-  cx.textAlign='left';
+  drawGrabArrow(a,'#ffd83a');
 }
-function drawPowerups(){powerups.forEach(p=>{cx.save();cx.translate(p.x,p.y);drawBubbleTea(p.anim);cx.restore();});}
+function drawHealDrink(a){
+  const bob=Math.sin(a*2)*2,pulse=.5+Math.sin(a*3)*.5;
+  drawPowerupGlow(bob,pulse,'255,90,120');
+  // Can (100+ isotonic-style)
+  cx.save();cx.translate(0,bob);
+  cx.fillStyle='rgba(0,0,0,.12)';cx.beginPath();cx.ellipse(0,17,10,3.5,0,0,Math.PI*2);cx.fill();
+  cx.fillStyle='#e8eef5';
+  cx.beginPath();cx.moveTo(-8,-14);cx.lineTo(8,-14);cx.lineTo(8,14);cx.lineTo(-8,14);cx.closePath();cx.fill();
+  cx.fillStyle='#1a5fc4';cx.fillRect(-8,-6,16,10);
+  cx.fillStyle='#fff';
+  cx.fillRect(-1.4,-4,2.8,6);cx.fillRect(-4,-2.4,8,2.8);
+  cx.fillStyle='#c8d0da';
+  cx.beginPath();cx.ellipse(0,-14,8,2.2,0,0,Math.PI*2);cx.fill();
+  cx.beginPath();cx.ellipse(0,14,8,2.2,0,0,Math.PI*2);cx.fill();
+  cx.fillStyle='#1a5fc4';cx.font='bold 6px Arial';cx.textAlign='center';
+  cx.fillText('100+',0,10);cx.textAlign='left';
+  cx.restore();
+  drawGrabArrow(a,'#ff5a78');
+}
+function drawPowerups(){
+  powerups.forEach(p=>{
+    cx.save();cx.translate(p.x,p.y);
+    if(p.kind==='heal')drawHealDrink(p.anim); else drawBubbleTea(p.anim);
+    cx.restore();
+  });
+}
 
 // ── Draw helpers ──────────────────────────────────────────
 function rrect(x,y,w,h,r){
@@ -1253,8 +1300,10 @@ function drawPuddle(a){
 // ── Uncle Sim ─────────────────────────────────────────────
 function drawUncle(x,y,pa,wob,inv){
   cx.save();cx.translate(x,y);
-  if(inv>0){
-    // Steady golden shield aura — doesn't blink, so invincibility always reads clearly
+  if(pl.shieldT>0){
+    // Steady golden shield aura from the bubble-tea power-up only —
+    // NOT shown for the brief post-hit i-frames, so it never looks like
+    // you were "rewarded" right when a heart gets taken away
     const pulse=.5+Math.sin(t*8)*.5;
     const aura=cx.createRadialGradient(0,0,10,0,0,42);
     aura.addColorStop(0,`rgba(255,215,60,${.05+pulse*.12})`);
@@ -1264,6 +1313,20 @@ function drawUncle(x,y,pa,wob,inv){
     cx.beginPath();cx.arc(0,0,42,0,Math.PI*2);cx.fill();
     cx.strokeStyle=`rgba(255,225,90,${.5+pulse*.4})`;cx.lineWidth=2;
     cx.beginPath();cx.arc(0,0,34,0,Math.PI*2);cx.stroke();
+  }
+  if(pl.healT>0){
+    // Brief pink heart-halo after picking up the 100+ heal drink
+    const hp=.5+Math.sin(t*10)*.5;
+    const haura=cx.createRadialGradient(0,0,10,0,0,38);
+    haura.addColorStop(0,`rgba(255,90,120,${.06+hp*.14})`);
+    haura.addColorStop(.7,`rgba(255,90,120,${.25+hp*.2})`);
+    haura.addColorStop(1,'rgba(255,90,120,0)');
+    cx.fillStyle=haura;
+    cx.beginPath();cx.arc(0,0,38,0,Math.PI*2);cx.fill();
+    for(let i=0;i<3;i++){
+      const ang=t*3+i*(Math.PI*2/3);
+      drawHeart(Math.cos(ang)*28,Math.sin(ang)*28-6,4,'#ff4d6d',1);
+    }
   }
   if(inv>0&&Math.sin(t*25)<0){cx.restore();return;}
   if(inv>0)cx.globalAlpha=.75;
@@ -1471,8 +1534,10 @@ function drawHUD(){
   // Distance
   cx.fillStyle=P.grn;cx.font='bold 18px Courier New';cx.textAlign='right';
   cx.fillText(Math.floor(dist)+'m',W-18,30);cx.textAlign='left';
-  // Invincible indicator — bold pulsing banner + countdown, hard to miss
-  if(pl.inv>0){
+  // Shield power-up indicator — bold pulsing banner + countdown, hard to miss.
+  // Gated on shieldT (bubble tea only), not the brief post-hit i-frames, so it
+  // never falsely reads as a reward at the same moment a heart is lost.
+  if(pl.shieldT>0){
     const pulse=.5+Math.sin(t*8)*.5;
     const bw=190,bh=22,bx=W/2-bw/2,by=50;
     cx.fillStyle=`rgba(255,190,40,${.6+pulse*.25})`;
@@ -1490,7 +1555,7 @@ function drawHUD(){
     cx.closePath();cx.fill();
     cx.restore();
     cx.fillStyle='#2a1a00';cx.font='bold 13px Courier New';cx.textAlign='center';
-    cx.fillText('INVINCIBLE '+pl.inv.toFixed(1)+'s',W/2+8,by+bh-6);
+    cx.fillText('INVINCIBLE '+pl.shieldT.toFixed(1)+'s',W/2+8,by+bh-6);
     cx.textAlign='left';
   }
   // Bottom bar
