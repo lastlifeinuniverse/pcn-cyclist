@@ -1193,48 +1193,47 @@ function drawTitle(){
   if(Math.sin(t*2)>0){cx.fillStyle=P.wht;cx.font='bold 15px Courier New';cx.fillText('[ CLICK HERE OR PRESS SPACE TO RIDE ]',W/2,244);}
   cx.fillStyle='rgba(248,244,236,.4)';cx.font='10px Courier New';
   cx.fillText('↑↓ lane  ·  → boost  ·  SPACE brake',W/2,496);
-  // Portrait coach mark — prominent, fades out after ~5s
-  if(window.innerHeight>window.innerWidth&&t<5.5){
-    const alpha=t<0.4?t/0.4:t>4.5?Math.max(0,1-(t-4.5)):1;
+  // Portrait coach mark — 3s, big icon + minimal text
+  if(window.innerHeight>window.innerWidth&&t<3.5){
+    const alpha=t<0.3?t/0.3:t>3?Math.max(0,1-(t-3)/.5):1;
     cx.save();cx.globalAlpha=alpha;
-    // Dim the scene behind the card
-    cx.fillStyle='rgba(4,8,14,0.72)';cx.fillRect(0,0,W,H);
+    cx.fillStyle='rgba(4,8,14,0.78)';cx.fillRect(0,0,W,H);
     // Card
-    const cw=320,ch=200,cx2=W/2-cw/2,cy2=H/2-ch/2;
-    cx.fillStyle='rgba(8,18,12,0.97)';
-    rrect(cx2,cy2,cw,ch,18);cx.fill();
-    cx.strokeStyle='#4acd4a';cx.lineWidth=2.5;
-    rrect(cx2,cy2,cw,ch,18);cx.stroke();
-    // Phone icon (portrait rectangle)
-    const px=W/2-30,py=cy2+22,pw=22,ph=36,pr=4;
-    cx.strokeStyle='rgba(248,244,236,0.7)';cx.lineWidth=2;
-    rrect(px,py,pw,ph,pr);cx.stroke();
-    cx.fillStyle='rgba(248,244,236,0.5)';
-    cx.beginPath();cx.arc(px+pw/2,py+ph-7,2.5,0,Math.PI*2);cx.fill();
-    // Rotation arrow
-    const ax=px+pw+8,ay=py+ph/2;
-    cx.strokeStyle='#4acd4a';cx.lineWidth=2.5;cx.lineCap='round';
-    cx.beginPath();cx.arc(ax+6,ay,14,Math.PI*.9,Math.PI*2.3);cx.stroke();
-    cx.beginPath();cx.moveTo(ax+6+14*Math.cos(Math.PI*2.3),ay+14*Math.sin(Math.PI*2.3));
-    cx.lineTo(ax+6+14*Math.cos(Math.PI*2.3)+5,ay+14*Math.sin(Math.PI*2.3)-7);cx.stroke();
-    cx.beginPath();cx.moveTo(ax+6+14*Math.cos(Math.PI*2.3),ay+14*Math.sin(Math.PI*2.3));
-    cx.lineTo(ax+6+14*Math.cos(Math.PI*2.3)+8,ay+14*Math.sin(Math.PI*2.3)+2);cx.stroke();
-    // Landscape rectangle
-    const lx=ax+28,ly=py+ph/2-11,lw=36,lh=22;
-    cx.strokeStyle='#4acd4a';cx.lineWidth=2;
-    rrect(lx,ly,lw,lh,pr);cx.stroke();
-    cx.fillStyle='#4acd4a';
-    cx.beginPath();cx.arc(lx+lw-7,ly+lh/2,2.5,0,Math.PI*2);cx.fill();
+    const cw=340,ch=220,cx2=W/2-cw/2,cy2=H/2-ch/2-10;
+    cx.fillStyle='rgba(6,16,10,0.97)';rrect(cx2,cy2,cw,ch,22);cx.fill();
+    cx.strokeStyle='#4acd4a';cx.lineWidth=3;rrect(cx2,cy2,cw,ch,22);cx.stroke();
+    // ── Big phone-rotation icon ──
+    cx.save();cx.translate(W/2,cy2+88);
+    // Portrait phone (left)
+    const pr2=7;
+    cx.strokeStyle='rgba(255,255,255,0.8)';cx.lineWidth=3;
+    rrect(-88,-34,44,68,pr2);cx.stroke();
+    cx.fillStyle='rgba(255,255,255,0.35)';rrect(-88,-34,44,68,pr2);cx.fill();
+    cx.fillStyle='rgba(255,255,255,0.7)';cx.beginPath();cx.arc(-66,26,4,0,Math.PI*2);cx.fill();
+    // Arrow (curved, animated nudge)
+    const nudge=Math.sin(t*4)*.04;
+    cx.strokeStyle='#4acd4a';cx.lineWidth=4;cx.lineCap='round';
+    cx.beginPath();cx.arc(0,0,32,Math.PI+.4+nudge,-Math.PI/2-.3+nudge,false);cx.stroke();
+    // Arrowhead
+    const aang=-Math.PI/2-.3+nudge;
+    const atx=Math.cos(aang)*32,aty=Math.sin(aang)*32;
+    cx.beginPath();
+    cx.moveTo(atx,aty);
+    cx.lineTo(atx+Math.cos(aang+Math.PI/2)*10,aty+Math.sin(aang+Math.PI/2)*10);
+    cx.lineTo(atx+Math.cos(aang-.6)*12,aty+Math.sin(aang-.6)*12);
+    cx.closePath();cx.fillStyle='#4acd4a';cx.fill();
+    // Landscape phone (right)
+    cx.strokeStyle='#4acd4a';cx.lineWidth=3;
+    rrect(48,-22,68,44,pr2);cx.stroke();
+    cx.fillStyle='rgba(74,205,74,0.2)';rrect(48,-22,68,44,pr2);cx.fill();
+    cx.fillStyle='#4acd4a';cx.beginPath();cx.arc(108,0,4,0,Math.PI*2);cx.fill();
+    cx.restore();
     // Text
     cx.textAlign='center';
-    cx.fillStyle='#ffffff';cx.font='bold 17px Courier New';
-    cx.fillText('Better in landscape!',W/2,cy2+ch-78);
-    cx.fillStyle='rgba(248,244,236,0.65)';cx.font='12px Courier New';
-    cx.fillText('Rotate your phone sideways',W/2,cy2+ch-56);
-    cx.fillText('for the full experience',W/2,cy2+ch-38);
-    // Tap to dismiss hint
-    cx.fillStyle='rgba(74,205,74,0.5)';cx.font='10px Courier New';
-    cx.fillText('(tap anywhere to start)',W/2,cy2+ch-16);
+    cx.fillStyle='#ffffff';cx.font='bold 26px Arial, sans-serif';
+    cx.fillText('ROTATE TO PLAY',W/2,cy2+ch-44);
+    cx.fillStyle='rgba(74,205,74,0.8)';cx.font='14px Courier New';
+    cx.fillText('landscape mode',W/2,cy2+ch-20);
     cx.restore();
   }
   cx.textAlign='left';
