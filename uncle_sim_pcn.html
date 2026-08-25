@@ -345,6 +345,9 @@ function effSpeed(){return gSpeed*(1+pl.velM*.65);}
 let obs=[];
 const OTYPES=['jogger','pedestrian','cat','cyclist','barrier','puddle','speedbump','monkey','kite','oncoming','crab','otter'];
 const OLIMITS={jogger:0,pedestrian:0,cat:200,cyclist:230,barrier:260,puddle:0,speedbump:0,monkey:0,kite:0,oncoming:0,crab:0,otter:0};
+// Small/glancing hazards cost half a heart; person/vehicle/specialty hazards cost a full heart.
+// (puddle-at-speed is handled separately since it also has its own velocity condition.)
+const HALF_HEART_TYPES=new Set(['cat','crab','poop']);
 
 function spawnObs(){
   let avail=OTYPES.filter(tp=>{
@@ -450,19 +453,16 @@ function updObs(dt){
       if(pl.inv<=0){
         if(o.tp==='puddle'){
           if(pl.velM>.4){
-            const hit=pl.hit();
+            const hit=pl.hit(0.5); // just a skid — half heart
             if(hit&&lives<=0){st='over';}
             return !hit;
           } else {
             pl.wob=Math.max(pl.wob,.7);pl.velM=Math.min(pl.velM,-.2);return false;
           }
         }
-        if(o.tp==='poop'){
-          const hit=pl.hit(0.5);
-          if(hit&&lives<=0){st='over';}
-          return !hit;
-        }
-        const hit=pl.hit();
+        // Small/glancing hazards cost half a heart; everything else is a full hit
+        const amt=HALF_HEART_TYPES.has(o.tp)?0.5:1;
+        const hit=pl.hit(amt);
         if(hit&&lives<=0){st='over';}
         return !hit;
       }
@@ -538,12 +538,12 @@ function updPowerups(dt){
     return true;
   });
 }
-function drawPowerupGlow(bob,pulse,col){
-  const glow=cx.createRadialGradient(0,bob,2,0,bob,28);
-  glow.addColorStop(0,`rgba(${col},${.5+pulse*.3})`);
+function drawPowerupGlow(bob,pulse,col,radius=28,peak=.5){
+  const glow=cx.createRadialGradient(0,bob,2,0,bob,radius);
+  glow.addColorStop(0,`rgba(${col},${peak+pulse*.3})`);
   glow.addColorStop(1,`rgba(${col},0)`);
   cx.fillStyle=glow;
-  cx.beginPath();cx.arc(0,bob,28,0,Math.PI*2);cx.fill();
+  cx.beginPath();cx.arc(0,bob,radius,0,Math.PI*2);cx.fill();
 }
 function drawGrabArrow(a,arrowCol){
   const arrowY=-40+Math.sin(a*4)*4;
@@ -584,7 +584,7 @@ function drawBubbleTea(a){
 }
 function drawHealDrink(a){
   const bob=Math.sin(a*2)*2,pulse=.5+Math.sin(a*3)*.5;
-  drawPowerupGlow(bob,pulse,'255,90,120');
+  drawPowerupGlow(bob,pulse,'255,90,120',44,.62); // bigger, more intense — rarer and more important to spot
   // Can (100+ isotonic-style)
   cx.save();cx.translate(0,bob);
   cx.fillStyle='rgba(0,0,0,.12)';cx.beginPath();cx.ellipse(0,17,10,3.5,0,0,Math.PI*2);cx.fill();
