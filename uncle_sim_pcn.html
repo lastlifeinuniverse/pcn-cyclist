@@ -13,7 +13,20 @@ canvas{display:block;width:100%;height:auto;border-radius:6px;cursor:pointer;box
   #btns{gap:5px;}
   .btn{padding:7px 11px;font-size:12px;background:rgba(20,28,38,.38);border-color:rgba(255,255,255,.15);}
   .btn:active,.btn.held{background:rgba(60,80,100,.6);}
+  #tip{display:block;}
 }
+#tip{
+  display:none;
+  position:absolute;top:12px;left:50%;transform:translateX(-50%);
+  background:rgba(10,15,20,0.82);
+  color:#4acd4a;
+  font-family:'Courier New',monospace;font-size:11px;
+  padding:7px 14px;border-radius:20px;
+  border:1px solid rgba(74,205,74,0.3);
+  white-space:nowrap;pointer-events:none;
+  animation:tipFade 5s ease-in-out forwards;
+}
+@keyframes tipFade{0%{opacity:0;}15%{opacity:1;}70%{opacity:1;}100%{opacity:0;}}
 .btn:active,.btn.held{background:rgba(60,80,100,.9);border-color:rgba(255,255,255,.5)}
 .brk{color:#ff5555;border-color:rgba(255,85,85,.4)}
 .bst{color:#e8a030;border-color:rgba(232,160,48,.4)}
@@ -64,6 +77,7 @@ canvas{display:block;width:100%;height:auto;border-radius:6px;cursor:pointer;box
 </div>
 <div id="wrap">
   <canvas id="c" width="900" height="540"></canvas>
+  <div id="tip">Rotate to landscape for better experience</div>
   <!-- Desktop / portrait bottom controls -->
   <div id="btns">
     <button id="bUp" class="btn">LANE UP</button>
