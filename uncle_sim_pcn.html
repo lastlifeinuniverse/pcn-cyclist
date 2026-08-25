@@ -17,16 +17,17 @@ canvas{display:block;width:100%;height:auto;border-radius:6px;cursor:pointer;box
 }
 #tip{
   display:none;
-  position:absolute;top:12px;left:50%;transform:translateX(-50%);
-  background:rgba(10,15,20,0.82);
+  position:absolute;top:14px;left:50%;transform:translateX(-50%);
+  z-index:50;
+  background:rgba(10,15,20,0.88);
   color:#4acd4a;
-  font-family:'Courier New',monospace;font-size:11px;
-  padding:7px 14px;border-radius:20px;
-  border:1px solid rgba(74,205,74,0.3);
+  font-family:'Courier New',monospace;font-size:12px;
+  padding:8px 16px;border-radius:20px;
+  border:1px solid rgba(74,205,74,0.4);
   white-space:nowrap;pointer-events:none;
-  animation:tipFade 5s ease-in-out forwards;
+  animation:tipFade 6s ease-in-out forwards;
 }
-@keyframes tipFade{0%{opacity:0;}15%{opacity:1;}70%{opacity:1;}100%{opacity:0;}}
+@keyframes tipFade{0%{opacity:0;}12%{opacity:1;}72%{opacity:1;}100%{opacity:0;}}
 .btn:active,.btn.held{background:rgba(60,80,100,.9);border-color:rgba(255,255,255,.5)}
 .brk{color:#ff5555;border-color:rgba(255,85,85,.4)}
 .bst{color:#e8a030;border-color:rgba(232,160,48,.4)}
