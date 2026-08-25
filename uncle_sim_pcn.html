@@ -330,7 +330,7 @@ function spawnObs(){
   });
   if(weather==='rain') avail=[...avail,'puddle','puddle','puddle'];
   if(lvl>=1) avail=[...avail,'monkey','speedbump'];
-  if(lvl>=2) avail=[...avail,'kite','oncoming','oncoming']; // kite once, oncoming twice
+  if(lvl>=2) avail=[...avail,'kite','oncoming']; // one kite, one oncoming
   const tp=avail[Math.floor(Math.random()*avail.length)];
   const lane=Math.floor(Math.random()*3);
   const dim={
@@ -341,13 +341,12 @@ function spawnObs(){
     oncoming:{w:58,h:62},
   }[tp];
   const kiteStartY = tp==='kite' ? LY[1] : LY[lane];
-  // Oncoming spawns from left edge travelling fast rightward
-  const startX = tp==='oncoming' ? -90 : W+90;
+  const startX = W+90; // all obstacles spawn from right
   obs.push({
     tp,lane,x:startX,y:kiteStartY,
     w:dim.w,h:dim.h,
     vx:{jogger:-55,pedestrian:-25,cat:0,cyclist:-35,barrier:0,puddle:0,
-        speedbump:0,monkey:-20,kite:40,oncoming:-(gSpeed*1.8+220)}[tp],
+        speedbump:0,monkey:-20,kite:40,oncoming:200}[tp],
     anim:Math.random()*10,
     cdir:Math.random()<.5?-1:1,ctimer:1+Math.random()*2,
     wide:tp==='pedestrian'&&Math.random()<.25,
@@ -390,8 +389,7 @@ function updObs(dt){
       // Tilt tail based on vertical movement direction
       o.kiteTailAng=Math.cos(o.kitePhase)*0.5;
     }
-    if(o.tp==='oncoming'){if(o.x>W+120)return false;}
-    else if(o.x<-120)return false;
+    if(o.x<-120)return false;
     // Collision
     const pb=pl.box();
     const m=9;
