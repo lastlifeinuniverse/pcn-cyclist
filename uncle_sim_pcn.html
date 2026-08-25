@@ -333,8 +333,8 @@ function effSpeed(){return gSpeed*(1+pl.velM*.65);}
 
 // ── Obstacles ─────────────────────────────────────────────
 let obs=[];
-const OTYPES=['jogger','pedestrian','cat','cyclist','barrier','puddle','speedbump','monkey','kite','oncoming','crab','beachball','otter'];
-const OLIMITS={jogger:0,pedestrian:0,cat:200,cyclist:230,barrier:260,puddle:0,speedbump:0,monkey:0,kite:0,oncoming:0,crab:0,beachball:0,otter:0};
+const OTYPES=['jogger','pedestrian','cat','cyclist','barrier','puddle','speedbump','monkey','kite','oncoming','crab','otter'];
+const OLIMITS={jogger:0,pedestrian:0,cat:200,cyclist:230,barrier:260,puddle:0,speedbump:0,monkey:0,kite:0,oncoming:0,crab:0,otter:0};
 
 function spawnObs(){
   let avail=OTYPES.filter(tp=>{
@@ -342,13 +342,13 @@ function spawnObs(){
     if(tp==='monkey'&&lvl<1)return false;
     if(tp==='kite'&&lvl<2)return false;
     if(tp==='oncoming'&&(lvl<2||Math.random()<.7))return false; // rare — only ~30% of eligible spawns even offer it
-    if((tp==='crab'||tp==='beachball'||tp==='otter')&&lvl<3)return false; // beach hazards only at East Coast
+    if((tp==='crab'||tp==='otter')&&lvl<3)return false; // beach hazards only at East Coast
     return true;
   });
   if(weather==='rain') avail=[...avail,'puddle','puddle','puddle'];
   if(lvl===1||lvl===2) avail=[...avail,'monkey','speedbump'];
   if(lvl===2) avail=[...avail,'kite','oncoming']; // kept minimal again at East Coast
-  if(lvl===3) avail=[...avail,'crab','crab','beachball','otter'];
+  if(lvl===3) avail=[...avail,'crab','crab','otter'];
   const tp=avail[Math.floor(Math.random()*avail.length)];
   let lane=Math.floor(Math.random()*3);
   const dim={
@@ -356,7 +356,7 @@ function spawnObs(){
     cat:{w:32,h:22},cyclist:{w:58,h:62},
     barrier:{w:38,h:58},puddle:{w:65,h:28},
     speedbump:{w:70,h:18},monkey:{w:28,h:38},kite:{w:34,h:34},
-    oncoming:{w:58,h:62},crab:{w:34,h:22},beachball:{w:30,h:30},
+    oncoming:{w:58,h:62},crab:{w:34,h:22},
     otter:{w:72,h:(RH/3)*2},
   }[tp];
   let oy;
@@ -375,7 +375,7 @@ function spawnObs(){
     w:dim.w,h:dim.h,
     vx:{jogger:-55,pedestrian:-25,cat:0,cyclist:-35,barrier:0,puddle:0,
         speedbump:0,monkey:-20,kite:40,oncoming:200,
-        crab:0,beachball:0,otter:-25}[tp],
+        crab:0,otter:-25}[tp],
     anim:Math.random()*10,
     cdir:Math.random()<.5?-1:1,ctimer:1+Math.random()*2,
     wide:tp==='pedestrian'&&Math.random()<.25,
@@ -401,12 +401,12 @@ function updObs(dt){
         if(o.y>LY[2]+30){o.y=LY[2]+30;o.cdir=-1;}
       }
     }
-    if(o.tp==='monkey'||o.tp==='beachball'){
+    if(o.tp==='monkey'){
       o.jumpTimer-=dt;
       if(o.jumpTimer<0){
         o.lane=Math.floor(Math.random()*3);
         o.y=LY[o.lane];
-        o.jumpTimer=(o.tp==='beachball'?0.9:0.6)+Math.random()*1.2;
+        o.jumpTimer=0.6+Math.random()*1.2;
         o.anim=0;
       }
     }
@@ -521,27 +521,44 @@ function updPowerups(dt){
 }
 function drawBubbleTea(a){
   const bob=Math.sin(a*2)*2;
+  const pulse=.5+Math.sin(a*3)*.5;
+  // Pulsing glow halo so it reads against the busy backdrop
+  const glow=cx.createRadialGradient(0,bob,2,0,bob,28);
+  glow.addColorStop(0,`rgba(255,220,120,${.5+pulse*.3})`);
+  glow.addColorStop(1,'rgba(255,220,120,0)');
+  cx.fillStyle=glow;
+  cx.beginPath();cx.arc(0,bob,28,0,Math.PI*2);cx.fill();
+  // Cup
   cx.save();cx.translate(0,bob);
   cx.fillStyle='rgba(0,0,0,.12)';cx.beginPath();cx.ellipse(0,17,12,3.5,0,0,Math.PI*2);cx.fill();
-  // Cup (tapered)
   cx.fillStyle='rgba(230,220,255,.55)';
   cx.beginPath();
   cx.moveTo(-9,-12);cx.lineTo(9,-12);cx.lineTo(7,14);cx.lineTo(-7,14);cx.closePath();cx.fill();
   cx.strokeStyle='rgba(255,255,255,.8)';cx.lineWidth=1;cx.stroke();
-  // Tea fill
   cx.fillStyle='#d89858';
   cx.beginPath();
   cx.moveTo(-8,-4);cx.lineTo(8,-4);cx.lineTo(6.5,13);cx.lineTo(-6.5,13);cx.closePath();cx.fill();
-  // Boba pearls
   cx.fillStyle='#3a2416';
   [[-3,9],[2,10],[-1,5],[4,6],[0,1]].forEach(([bx,by])=>{
     cx.beginPath();cx.arc(bx,by,1.6,0,Math.PI*2);cx.fill();
   });
-  // Lid + straw
   cx.fillStyle='#f0ecff';cx.fillRect(-10,-14,20,3);
   cx.strokeStyle='#ff5a8a';cx.lineWidth=3;cx.lineCap='round';
   cx.beginPath();cx.moveTo(4,-14);cx.lineTo(6,-24);cx.stroke();
   cx.restore();
+  // Bouncing arrow + label pointing it out
+  const arrowY=-40+Math.sin(a*4)*4;
+  cx.fillStyle='#ffd83a';
+  cx.beginPath();
+  cx.moveTo(0,arrowY+11);cx.lineTo(-7,arrowY+1);cx.lineTo(-3,arrowY+1);
+  cx.lineTo(-3,arrowY-9);cx.lineTo(3,arrowY-9);cx.lineTo(3,arrowY+1);
+  cx.lineTo(7,arrowY+1);cx.closePath();cx.fill();
+  cx.strokeStyle='rgba(0,0,0,.35)';cx.lineWidth=1;cx.stroke();
+  cx.font='bold 10px Courier New';cx.textAlign='center';
+  cx.strokeStyle='rgba(0,0,0,.65)';cx.lineWidth=3;
+  cx.strokeText('GRAB ME!',0,arrowY-13);
+  cx.fillStyle='#fff';cx.fillText('GRAB ME!',0,arrowY-13);
+  cx.textAlign='left';
 }
 function drawPowerups(){powerups.forEach(p=>{cx.save();cx.translate(p.x,p.y);drawBubbleTea(p.anim);cx.restore();});}
 
@@ -819,7 +836,6 @@ function drawObs(o){
   else if(o.tp==='kite')drawKite(o.anim,o.kiteTailAng||0);
   else if(o.tp==='oncoming')drawOncoming(o.anim);
   else if(o.tp==='crab')drawCrab(o.anim);
-  else if(o.tp==='beachball')drawBeachBall(o.anim);
   else if(o.tp==='otter')drawOtterFamily(o.anim);
   else if(o.tp==='poop')drawPoop(o.anim);
   cx.restore();
@@ -1115,23 +1131,6 @@ function drawCrab(a){
   cx.restore();
 }
 
-function drawBeachBall(a){
-  const bounce=Math.abs(Math.sin(a*2))*6;
-  cx.fillStyle='rgba(0,0,0,.15)';
-  cx.beginPath();cx.ellipse(0,16,13,4,0,0,Math.PI*2);cx.fill();
-  cx.save();cx.translate(0,-bounce);
-  const cols=['#e8342a','#3a7ee8','#eecc22','#3ab54a'];
-  cols.forEach((c,i)=>{
-    cx.fillStyle=c;
-    cx.beginPath();cx.moveTo(0,0);
-    cx.arc(0,0,15,(i/4)*Math.PI*2,(i/4+1/4)*Math.PI*2);
-    cx.closePath();cx.fill();
-  });
-  cx.strokeStyle='rgba(0,0,0,.15)';cx.lineWidth=1;
-  cx.beginPath();cx.arc(0,0,15,0,Math.PI*2);cx.stroke();
-  cx.restore();
-}
-
 function drawOtter(x,y,a,sc){
   cx.save();cx.translate(x,y);cx.scale(sc,sc);
   const run=Math.sin(a*9)*5;
@@ -1254,6 +1253,18 @@ function drawPuddle(a){
 // ── Uncle Sim ─────────────────────────────────────────────
 function drawUncle(x,y,pa,wob,inv){
   cx.save();cx.translate(x,y);
+  if(inv>0){
+    // Steady golden shield aura — doesn't blink, so invincibility always reads clearly
+    const pulse=.5+Math.sin(t*8)*.5;
+    const aura=cx.createRadialGradient(0,0,10,0,0,42);
+    aura.addColorStop(0,`rgba(255,215,60,${.05+pulse*.12})`);
+    aura.addColorStop(.7,`rgba(255,215,60,${.22+pulse*.18})`);
+    aura.addColorStop(1,'rgba(255,215,60,0)');
+    cx.fillStyle=aura;
+    cx.beginPath();cx.arc(0,0,42,0,Math.PI*2);cx.fill();
+    cx.strokeStyle=`rgba(255,225,90,${.5+pulse*.4})`;cx.lineWidth=2;
+    cx.beginPath();cx.arc(0,0,34,0,Math.PI*2);cx.stroke();
+  }
   if(inv>0&&Math.sin(t*25)<0){cx.restore();return;}
   if(inv>0)cx.globalAlpha=.75;
   if(wob>.01)cx.rotate(Math.sin(t*22)*wob*.1);
@@ -1460,10 +1471,27 @@ function drawHUD(){
   // Distance
   cx.fillStyle=P.grn;cx.font='bold 18px Courier New';cx.textAlign='right';
   cx.fillText(Math.floor(dist)+'m',W-18,30);cx.textAlign='left';
-  // Invincible indicator
+  // Invincible indicator — bold pulsing banner + countdown, hard to miss
   if(pl.inv>0){
-    cx.fillStyle='rgba(255,200,50,.7)';cx.font='10px Courier New';
-    cx.fillText('* PROTECTED',W/2-40,44);
+    const pulse=.5+Math.sin(t*8)*.5;
+    const bw=190,bh=22,bx=W/2-bw/2,by=50;
+    cx.fillStyle=`rgba(255,190,40,${.6+pulse*.25})`;
+    rrect(bx,by,bw,bh,11);cx.fill();
+    cx.strokeStyle=`rgba(255,235,150,${.65+pulse*.35})`;cx.lineWidth=2;
+    rrect(bx,by,bw,bh,11);cx.stroke();
+    // Small drawn star icon (no Unicode — renders consistently everywhere)
+    cx.save();cx.translate(bx+16,by+bh/2);
+    cx.fillStyle='#2a1a00';cx.beginPath();
+    for(let i=0;i<5;i++){
+      const ang=-Math.PI/2+i*(Math.PI*2/5),ang2=ang+Math.PI/5;
+      cx.lineTo(Math.cos(ang)*7,Math.sin(ang)*7);
+      cx.lineTo(Math.cos(ang2)*3,Math.sin(ang2)*3);
+    }
+    cx.closePath();cx.fill();
+    cx.restore();
+    cx.fillStyle='#2a1a00';cx.font='bold 13px Courier New';cx.textAlign='center';
+    cx.fillText('INVINCIBLE '+pl.inv.toFixed(1)+'s',W/2+8,by+bh-6);
+    cx.textAlign='left';
   }
   // Bottom bar
   cx.fillStyle=P.uiBg;cx.fillRect(0,H-38,W,38);
