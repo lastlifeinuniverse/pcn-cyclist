@@ -149,6 +149,7 @@ let terrainNextDist=900;   // absolute dist at which the current segment ends
 let terrainQueueUp=true;   // alternates which slope direction comes next
 let terrainZoneT=0,terrainBrakeT=0; // time-in-zone / time-braking, for the downhill control check
 let slopeSignT=0;          // seconds left to show the entry banner
+let terrainTilt=0;         // eased -1..1 ramp tilt, drawn as a road shear (visual only)
 const DESTS=[
   {name:'Bishan Park',d:1800},
   {name:'MacRitchie Reservoir',d:3200},
@@ -360,6 +361,8 @@ function effSpeed(){
 // ── Terrain (slopes) ────────────────────────────────────────
 function updTerrain(dt){
   slopeSignT=Math.max(0,slopeSignT-dt);
+  const tiltTarget=terrainState==='up'?-1:terrainState==='down'?1:0;
+  terrainTilt+=(tiltTarget-terrainTilt)*Math.min(1,dt*2.2);
   if(lvl!==2)return; // Marina Barrage only, for now
   if(terrainState==='down'){
     terrainZoneT+=dt;
@@ -724,6 +727,16 @@ function drawSky(){
     const cx2=((t*W*cl.ox+200)%(W+200))-100;
     cloud(cx2,cl.oy,cl.sc,ri);
   });
+}
+
+function drawSlopeGapFiller(){
+  // The sheared road can dip below the static backdrop's bottom edge on a
+  // downhill tilt; this fixed (unsheared) strip continues the sky's bottom
+  // color downward so no black gap shows through underneath.
+  if(terrainTilt===0)return;
+  const s2=lerpCol('#cce8f6','#485040',rainIntensity);
+  cx.fillStyle=s2;
+  cx.fillRect(0,RT,W,90);
 }
 
 function lerpCol(a,b,f){
@@ -1838,7 +1851,7 @@ function startGame(){
   flash=0;env_x=0;confetti=[];
   weather='clear';weatherTimer=20+Math.random()*20;rainIntensity=0;rainDrops=[];
   terrainState='flat';terrainNextDist=800+Math.random()*400;terrainQueueUp=Math.random()<.5;
-  terrainZoneT=0;terrainBrakeT=0;slopeSignT=0;
+  terrainZoneT=0;terrainBrakeT=0;slopeSignT=0;terrainTilt=0;
   pl.reset();initEnv();
 }
 function nextLvl(){
@@ -1888,6 +1901,14 @@ function frame(ts){
   else{
     drawSky();
     if(lvl===1)drawForestBg(); else if(lvl===3)drawBeachBg(); else drawHDB();
+    drawSlopeGapFiller();
+    // Ground plane (road, roadside decor, obstacles, rider) shears into a ramp
+    // during Marina Barrage slopes — pivoted at the player so they stay put
+    // on screen while the world tilts around them. Purely visual: collision
+    // still uses each entity's real x/y, untouched by this transform.
+    cx.save();
+    const k=terrainTilt*0.1;
+    cx.translate(PX,0);cx.transform(1,k,0,1,0,0);cx.translate(-PX,0);
     drawTrees();drawLamps();drawRoad();drawCanal();
     drawPigeons();
     obs.forEach(o=>{if(o.x>PX)drawObs(o);});
@@ -1895,6 +1916,7 @@ function frame(ts){
     drawUncle(PX,pl.y+pl.hopY(),pl.pedA,pl.wob,pl.inv);
     obs.forEach(o=>{if(o.x<=PX)drawObs(o);});
     drawSpeedLines();
+    cx.restore();
     drawRain();
     drawFx();drawHUD();drawSlopeSign();
     if(st==='over')drawOver();
