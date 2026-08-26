@@ -377,10 +377,11 @@ function updTerrain(dt){
       slopeSignT=2.2;
     } else {
       if(terrainState==='down'&&terrainBrakeT<terrainZoneT*0.35&&pl.inv<=0){
-        // Didn't brake enough during the descent — lose control coming off it
+        // Didn't brake enough during the descent — wobble only for now,
+        // heart deduction disabled temporarily per feedback
         pl.wob=Math.max(pl.wob,1.1);
-        const hitOk=pl.hit(0.5);
-        if(hitOk&&lives<=0)st='over';
+        // const hitOk=pl.hit(0.5);
+        // if(hitOk&&lives<=0)st='over';
       }
       terrainState='flat';
       terrainNextDist=dist+800+Math.random()*400; // flat gap: 800-1200m
@@ -400,14 +401,17 @@ function spawnObs(){
   let avail=OTYPES.filter(tp=>{
     if(gSpeed<OLIMITS[tp])return false;
     if(tp==='monkey'&&lvl<1)return false;
-    if(tp==='kite'&&lvl<2)return false;
+    if(tp==='kite'&&(lvl<2||Math.random()<.65))return false; // rare — only ~35% of eligible spawns even offer it
+    if(tp==='cat'&&Math.random()<.5)return false; // half as frequent
     if(tp==='oncoming'&&(lvl<2||Math.random()<.7))return false; // rare — only ~30% of eligible spawns even offer it
     if((tp==='crab'||tp==='otter')&&lvl<3)return false; // beach hazards only at East Coast
     return true;
   });
   if(weather==='rain') avail=[...avail,'puddle','puddle','puddle'];
   if(lvl===1||lvl===2) avail=[...avail,'monkey','speedbump'];
-  if(lvl===2) avail=[...avail,'kite','oncoming']; // kept minimal again at East Coast
+  // Note: kite/oncoming used to also get an unconditional bump here at lvl===2,
+  // which silently undid the rarity filters above — removed so the filter is
+  // the single source of truth for how often they show up.
   if(lvl===3) avail=[...avail,'crab','crab','otter'];
   const tp=avail[Math.floor(Math.random()*avail.length)];
   let lane=Math.floor(Math.random()*3);
