@@ -156,7 +156,8 @@ let chickenNextDist=400;   // world dist of the next crossing point
 let chickenCrossT=0;       // seconds left for the chickens to finish crossing
 let chickenBannerT=0;      // entry banner display timer
 let chickenQuoteT=0;       // observation-quote display timer
-const CHICKEN_WARN_DIST=230, CHICKEN_CROSS_DURATION=3.4;
+const CHICKEN_WARN_DIST=340, CHICKEN_CROSS_DURATION=5.5, CHICKEN_ADMIRE_DURATION=2.6;
+let chickenAdmireT=0;
 const CHICKEN_QUOTE="\"Slow down — the best part of cycling is watching the world go by.\"";
 const DESTS=[
   {name:'Bishan Park',d:1800},
@@ -416,25 +417,36 @@ function updChickens(dt){
     }
     return;
   }
-  // 'approach': a race between the player's progress and the crossing timer
-  chickenCrossT-=dt;
-  if(pl.velM<-0.3)pl.healT=Math.max(pl.healT,0.3); // live heart-glow while actively braking
-  if(dist>=chickenNextDist){
-    // Reached the crossing point while they're still crossing — didn't wait
-    if(pl.inv<=0){
-      const hitOk=pl.hit(1);
-      addFx(PX+40,pl.y,'squawk');
-      if(hitOk&&lives<=0)st='over';
+  if(chickenState==='approach'){
+    // A race between the player's progress and the crossing timer
+    chickenCrossT-=dt;
+    if(pl.velM<-0.3)pl.healT=Math.max(pl.healT,0.3); // live heart-glow while actively braking
+    if(dist>=chickenNextDist){
+      // Reached the crossing point while they're still crossing — didn't wait
+      if(pl.inv<=0){
+        const hitOk=pl.hit(1);
+        addFx(PX+40,pl.y,'squawk');
+        if(hitOk&&lives<=0)st='over';
+      }
+      chickenState='idle';
+      chickenNextDist=dist+550+Math.random()*350;
+    } else if(chickenCrossT<=0){
+      // Waited it out — reward now, then linger so the player can admire them
+      lives=Math.min(3,lives+1);
+      pl.healT=2.6;
+      pl.shieldT=10;pl.inv=Math.max(pl.inv,10);
+      pl.speedBoostT=10;
+      addFx(PX+40,pl.y,'heal');
+      chickenState='admire';
+      chickenAdmireT=CHICKEN_ADMIRE_DURATION;
     }
-    chickenState='idle';
-    chickenNextDist=dist+550+Math.random()*350;
-  } else if(chickenCrossT<=0){
-    // Waited it out — reward: heart restored, invincibility + speed boost
-    lives=Math.min(3,lives+1);
-    pl.healT=2.6;
-    pl.shieldT=10;pl.inv=Math.max(pl.inv,10);
-    pl.speedBoostT=10;
-    addFx(PX+40,pl.y,'heal');
+    return;
+  }
+  // 'admire': the family is safely off the road — no fail risk here, just a
+  // moment to enjoy them before the game moves back to normal
+  chickenAdmireT-=dt;
+  if(pl.velM<-0.2)pl.healT=Math.max(pl.healT,0.3);
+  if(chickenAdmireT<=0){
     chickenState='idle';
     chickenNextDist=dist+550+Math.random()*350;
   }
@@ -1011,31 +1023,62 @@ function drawChickenSign(){
   }
 }
 function drawChickenFamily(){
-  if(chickenState!=='approach')return;
+  if(chickenState!=='approach'&&chickenState!=='admire')return;
   const x=chickenScreenX();
-  if(x<-60||x>W+60)return;
-  const progress=1-Math.max(0,chickenCrossT)/CHICKEN_CROSS_DURATION; // 0..1 across the road
-  const y=LY[2]+34+(LY[0]-34-(LY[2]+34))*progress;
-  const a=t*8;
+  if(x<-80||x>W+80)return;
+  const walking=chickenState==='approach';
+  let y;
+  if(walking){
+    const progress=1-Math.max(0,chickenCrossT)/CHICKEN_CROSS_DURATION; // 0..1 across the road
+    y=LY[2]+34+(LY[0]-34-(LY[2]+34))*progress;
+  } else {
+    y=LY[0]-34; // settled at the roadside, done crossing
+  }
+  const a=t*(walking?7:2.2);
   cx.save();cx.translate(x,y);
-  // Hen (mother)
+
+  // Rooster — leads the family, wild junglefowl coloring (iridescent dark
+  // body, golden hackles, long arched black tail)
+  cx.save();cx.translate(15,-6);
+  const rlg=Math.sin(a)*(walking?3:1);
+  cx.fillStyle='rgba(0,0,0,.13)';cx.beginPath();cx.ellipse(0,17,13,3.5,0,0,Math.PI*2);cx.fill();
+  cx.strokeStyle='#1a1a14';cx.lineWidth=3;cx.lineCap='round';
+  cx.beginPath();cx.moveTo(-8,0);cx.quadraticCurveTo(-22,-6,-25,-19);cx.stroke();
+  cx.beginPath();cx.moveTo(-8,2);cx.quadraticCurveTo(-20,0,-22,-10);cx.stroke();
+  cx.fillStyle='#2a3a28';cx.beginPath();cx.ellipse(0,4,11,9,0,0,Math.PI*2);cx.fill();
+  cx.fillStyle='#d89a30';cx.beginPath();cx.ellipse(6,-3,7,6,0,0,Math.PI*2);cx.fill(); // hackles
+  cx.fillStyle='#2a3a28';cx.beginPath();cx.arc(10,-6,5.5,0,Math.PI*2);cx.fill(); // head
+  cx.fillStyle='#d8302a';
+  cx.beginPath();cx.moveTo(8,-11);cx.lineTo(11,-15);cx.lineTo(10,-9);cx.lineTo(13,-11);cx.lineTo(12,-7);cx.closePath();cx.fill(); // comb
+  cx.beginPath();cx.ellipse(13,-2,2,3,0,0,Math.PI*2);cx.fill(); // wattle
+  cx.fillStyle='#e8a020';cx.beginPath();cx.moveTo(15,-6);cx.lineTo(19,-4);cx.lineTo(15,-2);cx.closePath();cx.fill();
+  cx.strokeStyle='#c8862a';cx.lineWidth=2.5;
+  cx.beginPath();cx.moveTo(-2,12);cx.lineTo(-2+rlg,18);cx.stroke();
+  cx.beginPath();cx.moveTo(4,12);cx.lineTo(4-rlg,18);cx.stroke();
+  cx.restore();
+
+  // Hen — wild brownish-grey mottled plumage (not the domestic white)
+  const hlg=Math.sin(a+1)*(walking?3:1);
   cx.fillStyle='rgba(0,0,0,.13)';cx.beginPath();cx.ellipse(0,15,13,3.5,0,0,Math.PI*2);cx.fill();
-  cx.fillStyle='#e8e0d0';cx.beginPath();cx.ellipse(0,4,12,9,0,0,Math.PI*2);cx.fill();
-  cx.fillStyle='#c8302a';cx.beginPath();cx.moveTo(8,-9);cx.lineTo(13,-11);cx.lineTo(10,-6);cx.lineTo(6,-7);cx.closePath();cx.fill(); // comb
-  cx.fillStyle='#e8e0d0';cx.beginPath();cx.arc(9,-4,6,0,Math.PI*2);cx.fill(); // head
-  cx.fillStyle='#e89020';cx.beginPath();cx.moveTo(14,-4);cx.lineTo(19,-2);cx.lineTo(14,0);cx.closePath();cx.fill(); // beak
-  cx.fillStyle='#e89020';cx.lineCap='round';cx.strokeStyle='#e89020';cx.lineWidth=2.5;
-  const lg=Math.sin(a)*3;
-  cx.beginPath();cx.moveTo(-4,12);cx.lineTo(-4+lg,18);cx.stroke();
-  cx.beginPath();cx.moveTo(4,12);cx.lineTo(4-lg,18);cx.stroke();
+  cx.fillStyle='#8a7458';cx.beginPath();cx.ellipse(0,4,12,9,0,0,Math.PI*2);cx.fill();
+  cx.fillStyle='#5c4d38';
+  [[-4,1],[3,3],[-2,7],[5,-1]].forEach(([sx,sy])=>{cx.beginPath();cx.arc(sx,sy,1.4,0,Math.PI*2);cx.fill();}); // speckles
+  cx.fillStyle='#a83028';
+  cx.beginPath();cx.moveTo(8,-9);cx.lineTo(12,-11);cx.lineTo(10,-6);cx.lineTo(6,-7);cx.closePath();cx.fill(); // small comb
+  cx.fillStyle='#9a8468';cx.beginPath();cx.arc(9,-4,6,0,Math.PI*2);cx.fill(); // head
+  cx.fillStyle='#c8862a';cx.beginPath();cx.moveTo(14,-4);cx.lineTo(19,-2);cx.lineTo(14,0);cx.closePath();cx.fill(); // beak
+  cx.strokeStyle='#a8763a';cx.lineWidth=2.5;
+  cx.beginPath();cx.moveTo(-4,12);cx.lineTo(-4+hlg,18);cx.stroke();
+  cx.beginPath();cx.moveTo(4,12);cx.lineTo(4-hlg,18);cx.stroke();
+
   // Chicks trailing behind
-  [[-20,6,0],[-30,10,1.4],[-24,14,2.6]].forEach(([cx0,cy0,ph])=>{
-    const bob=Math.abs(Math.sin(a+ph))*2;
+  [[-20,6,0],[-30,10,1.4],[-24,15,2.6]].forEach(([cx0,cy0,ph])=>{
+    const bob=Math.abs(Math.sin(a+ph))*(walking?2:1);
     cx.save();cx.translate(cx0,cy0-bob);
     cx.fillStyle='rgba(0,0,0,.12)';cx.beginPath();cx.ellipse(0,7,5,1.6,0,0,Math.PI*2);cx.fill();
-    cx.fillStyle='#f4d840';cx.beginPath();cx.ellipse(0,2,5,4,0,0,Math.PI*2);cx.fill();
+    cx.fillStyle='#d8b860';cx.beginPath();cx.ellipse(0,2,5,4,0,0,Math.PI*2);cx.fill();
     cx.beginPath();cx.arc(3,-1,3,0,Math.PI*2);cx.fill();
-    cx.fillStyle='#e89020';cx.beginPath();cx.moveTo(6,-1);cx.lineTo(9,0);cx.lineTo(6,1);cx.closePath();cx.fill();
+    cx.fillStyle='#c8862a';cx.beginPath();cx.moveTo(6,-1);cx.lineTo(9,0);cx.lineTo(6,1);cx.closePath();cx.fill();
     cx.restore();
   });
   cx.restore();
@@ -2024,7 +2067,7 @@ function startGame(){
   weather='clear';weatherTimer=20+Math.random()*20;rainIntensity=0;rainDrops=[];
   terrainState='flat';terrainNextDist=800+Math.random()*400;terrainQueueUp=Math.random()<.5;
   terrainZoneT=0;terrainBrakeT=0;slopeSignT=0;terrainTilt=0;
-  chickenState='idle';chickenNextDist=350+Math.random()*250;chickenCrossT=0;chickenBannerT=0;chickenQuoteT=0;
+  chickenState='idle';chickenNextDist=350+Math.random()*250;chickenCrossT=0;chickenBannerT=0;chickenQuoteT=0;chickenAdmireT=0;
   pl.reset();initEnv();
 }
 function nextLvl(){
