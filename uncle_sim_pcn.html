@@ -1049,7 +1049,8 @@ function drawChickenFamily(){
 
   // Rooster — leads the family, wild junglefowl coloring (iridescent dark
   // body, golden hackles, long arched black tail)
-  cx.save();cx.translate(15,-6);
+  const rBob=walking?0:Math.sin(t*7)*-3.5;
+  cx.save();cx.translate(15,-6+rBob);
   const rlg=Math.sin(a)*(walking?3:1);
   cx.fillStyle='rgba(0,0,0,.13)';cx.beginPath();cx.ellipse(0,17,13,3.5,0,0,Math.PI*2);cx.fill();
   cx.strokeStyle='#1a1a14';cx.lineWidth=3;cx.lineCap='round';
@@ -1066,16 +1067,19 @@ function drawChickenFamily(){
   cx.beginPath();cx.moveTo(-2,12);cx.lineTo(-2+rlg,18);cx.stroke();
   cx.beginPath();cx.moveTo(4,12);cx.lineTo(4-rlg,18);cx.stroke();
   if(!walking){
-    // Waving to the player — safely across and grateful
-    const wave=Math.sin(t*7)*.55-.15;
-    cx.save();cx.translate(-4,-3);cx.rotate(wave);
-    cx.fillStyle='#1e2a1c';cx.beginPath();cx.ellipse(-6,-2,7,3.2,0,0,Math.PI*2);cx.fill();
-    cx.fillStyle='#d89a30';cx.beginPath();cx.ellipse(-11,-2,3,1.6,0,0,Math.PI*2);cx.fill();
+    // Waving to the player — big, sweeping, unmistakable
+    const wave=Math.sin(t*7)*1.15-.25;
+    cx.save();cx.translate(-3,-5);cx.rotate(wave);
+    cx.strokeStyle='#0e140c';cx.lineWidth=1.4;
+    cx.fillStyle='#243428';cx.beginPath();cx.ellipse(-9,-3,10,4.2,0,0,Math.PI*2);cx.fill();cx.stroke();
+    cx.fillStyle='#e8b03a';cx.beginPath();cx.ellipse(-16,-3,4,2,0,0,Math.PI*2);cx.fill();
     cx.restore();
   }
   cx.restore();
 
   // Hen — wild brownish-grey mottled plumage (not the domestic white)
+  const hBob=walking?0:Math.sin(t*7+0.7)*-3;
+  cx.save();cx.translate(0,hBob);
   const hlg=Math.sin(a+1)*(walking?3:1);
   cx.fillStyle='rgba(0,0,0,.13)';cx.beginPath();cx.ellipse(0,15,13,3.5,0,0,Math.PI*2);cx.fill();
   cx.fillStyle='#8a7458';cx.beginPath();cx.ellipse(0,4,12,9,0,0,Math.PI*2);cx.fill();
@@ -1090,11 +1094,13 @@ function drawChickenFamily(){
   cx.beginPath();cx.moveTo(4,12);cx.lineTo(4-hlg,18);cx.stroke();
   if(!walking){
     // Slightly offset phase from the rooster so the two waves aren't in lockstep
-    const wave=Math.sin(t*7+0.7)*.5-.1;
-    cx.save();cx.translate(-3,-2);cx.rotate(wave);
-    cx.fillStyle='#6b5c42';cx.beginPath();cx.ellipse(-6,-2,6.5,3,0,0,Math.PI*2);cx.fill();
+    const wave=Math.sin(t*7+0.7)*1.05-.2;
+    cx.save();cx.translate(-2,-4);cx.rotate(wave);
+    cx.strokeStyle='#3a3020';cx.lineWidth=1.2;
+    cx.fillStyle='#7a6a4e';cx.beginPath();cx.ellipse(-9,-3,9,3.8,0,0,Math.PI*2);cx.fill();cx.stroke();
     cx.restore();
   }
+  cx.restore();
 
   cx.restore();
 
@@ -1111,11 +1117,11 @@ function drawChickenFamily(){
     if(walking){
       bob=Math.abs(Math.sin(a*1.4+i*1.7))*2;
     } else {
-      // Dancing along with the parents' wave — bouncy hop, side wiggle, spin
-      const dp=t*6.5+i*2.1;
-      bob=Math.abs(Math.sin(dp))*4.5;
-      xWig=Math.sin(dp)*4;
-      spin=Math.sin(dp)*.35;
+      // Dancing along with the parents' wave — big bouncy hop, side wiggle, spin
+      const dp=t*8+i*2.1;
+      bob=Math.abs(Math.sin(dp))*8;
+      xWig=Math.sin(dp)*7;
+      spin=Math.sin(dp)*.6;
     }
     cx.save();cx.translate(x+chickXOff[i]+xWig,cy-bob);cx.rotate(spin);
     cx.fillStyle='rgba(0,0,0,.12)';cx.beginPath();cx.ellipse(0,7,5,1.6,0,0,Math.PI*2);cx.fill();
