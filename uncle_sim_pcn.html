@@ -361,6 +361,11 @@ function updEnv(dt){
 
 function effSpeed(){
   const boostMult=pl.speedBoostT>0?1.3:1; // chicken-crossing reward
+  // Holding full brake during a chicken crossing brings the player to a
+  // genuine, complete stop (elsewhere braking only ever reduces speed) —
+  // scoped to this one event so it can't be used to trivially halt for
+  // every other obstacle in the game.
+  if(lvl===0&&chickenState==='approach'&&pl.velM<=-0.55)return 0;
   if(terrainState==='up'){
     // Uphill drags speed down regardless of input; boost only partially fights it
     return gSpeed*0.62*(1+pl.velM*.3)*boostMult;
@@ -1010,7 +1015,7 @@ function drawChickenSign(){
     cx.fillStyle='#fff';cx.font='bold 17px Courier New';cx.textAlign='left';
     cx.fillText('CHICKENS CROSSING!',bx+58,by+26);
     cx.font='10px Courier New';cx.fillStyle='rgba(255,255,255,.75)';
-    cx.fillText('brake and let them pass!',bx+58,by+44);
+    cx.fillText('hold brake to stop for them!',bx+58,by+44);
     cx.textAlign='left';
     cx.restore();
   }
