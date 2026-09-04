@@ -237,7 +237,10 @@ const pl={
     if(boost)this.velM=Math.min(.9,this.velM+dt*2.4);
     else if(brake)this.velM=Math.max(-.6,this.velM-dt*2.5);
     else this.velM+=(0-this.velM)*dt*1.8;
-    this.pedA+=dt*(4+gSpeed/70)*(1+this.velM*.5);
+    // Legs stop pedaling too when fully stopped for the chickens — otherwise
+    // the bike still visibly "moves" even though the world has frozen.
+    const trueStop=lvl===0&&chickenState==='approach'&&this.velM<=-0.55;
+    if(!trueStop)this.pedA+=dt*(4+gSpeed/70)*(1+this.velM*.5);
     this.wob=Math.max(0,this.wob-dt*2.5);
   },
   hopY(){return this.hop>0?Math.sin(this.hop*Math.PI)*(-26):0;},
@@ -525,36 +528,42 @@ function spawnObs(){
 
 function updObs(dt){
   const spd=effSpeed();
+  // A true stop for the chickens freezes the whole scene — otherwise
+  // independently-moving obstacles (joggers, pedestrians, cyclists) would
+  // keep drifting past even though effSpeed() is 0, undermining the stop.
+  const frozen=lvl===0&&chickenState==='approach'&&pl.velM<=-0.55;
   obs=obs.filter(o=>{
-    o.anim+=dt*3;
-    o.x-=(spd+o.vx)*dt;
-    if(o.tp==='cat'){
-      o.ctimer-=dt;
-      if(o.ctimer<0){
-        o.y+=o.cdir*85*dt;
-        if(o.y<LY[0]-30){o.y=LY[0]-30;o.cdir=1;}
-        if(o.y>LY[2]+30){o.y=LY[2]+30;o.cdir=-1;}
+    if(!frozen){
+      o.anim+=dt*3;
+      o.x-=(spd+o.vx)*dt;
+      if(o.tp==='cat'){
+        o.ctimer-=dt;
+        if(o.ctimer<0){
+          o.y+=o.cdir*85*dt;
+          if(o.y<LY[0]-30){o.y=LY[0]-30;o.cdir=1;}
+          if(o.y>LY[2]+30){o.y=LY[2]+30;o.cdir=-1;}
+        }
       }
-    }
-    if(o.tp==='monkey'){
-      o.jumpTimer-=dt;
-      if(o.jumpTimer<0){
-        o.lane=Math.floor(Math.random()*3);
-        o.y=LY[o.lane];
-        o.jumpTimer=0.6+Math.random()*1.2;
-        o.anim=0;
+      if(o.tp==='monkey'){
+        o.jumpTimer-=dt;
+        if(o.jumpTimer<0){
+          o.lane=Math.floor(Math.random()*3);
+          o.y=LY[o.lane];
+          o.jumpTimer=0.6+Math.random()*1.2;
+          o.anim=0;
+        }
       }
-    }
-    if(o.tp==='poop'&&o.fallTargetY!==undefined){
-      o.y=Math.min(o.fallTargetY,o.y+240*dt);
-    }
-    if(o.tp==='kite'){
-      // Kite sweeps up and down through all lanes — hard to predict
-      o.kitePhase+=dt*o.kiteFreq*Math.PI*2;
-      const sweep=Math.sin(o.kitePhase)*o.kiteSweep*.5;
-      o.y=o.kiteBaseY+sweep;
-      // Tilt tail based on vertical movement direction
-      o.kiteTailAng=Math.cos(o.kitePhase)*0.5;
+      if(o.tp==='poop'&&o.fallTargetY!==undefined){
+        o.y=Math.min(o.fallTargetY,o.y+240*dt);
+      }
+      if(o.tp==='kite'){
+        // Kite sweeps up and down through all lanes — hard to predict
+        o.kitePhase+=dt*o.kiteFreq*Math.PI*2;
+        const sweep=Math.sin(o.kitePhase)*o.kiteSweep*.5;
+        o.y=o.kiteBaseY+sweep;
+        // Tilt tail based on vertical movement direction
+        o.kiteTailAng=Math.cos(o.kitePhase)*0.5;
+      }
     }
     if(o.x<-120)return false;
     // Collision
@@ -1815,7 +1824,8 @@ function drawHUD(){
   const lv=DESTS[lvl],dtg=Math.max(0,lv.d-dist),prog=Math.min(1,dist/lv.d);
   // Top bar
   cx.fillStyle=P.uiBg;cx.fillRect(0,0,W,46);
-  const spd=Math.round((gSpeed+pl.velM*45)*.065);
+  const trueStop=lvl===0&&chickenState==='approach'&&pl.velM<=-0.55;
+  const spd=trueStop?0:Math.round((gSpeed+pl.velM*45)*.065);
   cx.fillStyle=P.acc;cx.font='bold 24px Courier New';cx.fillText(spd+'',18,32);
   cx.fillStyle=P.wht;cx.font='10px Courier New';cx.fillText('km/h',54,32);
   // Hearts (drawn as canvas shapes — no Unicode; half-hearts for poop hits)
