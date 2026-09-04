@@ -233,7 +233,7 @@ const pl={
     this.ty=LY[this.lane];
     this.y+=(this.ty-this.y)*Math.min(1,dt*11);
     const boost=K.ArrowRight||K.d||K.D;
-    const brake=K[' ']||K.x||K.X;
+    const brake=K[' ']||K.x||K.X||K.ArrowLeft;
     if(boost)this.velM=Math.min(.9,this.velM+dt*2.4);
     else if(brake)this.velM=Math.max(-.6,this.velM-dt*2.5);
     else this.velM+=(0-this.velM)*dt*1.8;
@@ -1937,7 +1937,7 @@ function drawTitle(){
   cx.fillText('Dodge cats, joggers & rogue cyclists',W/2,208);
   if(Math.sin(t*2)>0){cx.fillStyle=P.wht;cx.font='bold 15px Courier New';cx.fillText('[ CLICK HERE OR PRESS SPACE TO RIDE ]',W/2,244);}
   cx.fillStyle='rgba(248,244,236,.4)';cx.font='10px Courier New';
-  cx.fillText('↑↓ lane  ·  → boost  ·  SPACE brake',W/2,496);
+  cx.fillText('↑↓ lane  ·  → boost  ·  ← / SPACE brake',W/2,496);
   // Portrait coach mark — 3s, big icon + minimal text
   if(window.innerHeight>window.innerWidth&&t<3.5){
     const alpha=t<0.3?t/0.3:t>3?Math.max(0,1-(t-3)/.5):1;
